@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* La paleta oficial de EstDent basada en tu logo */
+:root {
+  --brand-blue: #00A4E4; /* El cian vibrante de tus letras */
+  --brand-blue-light: #EBF7FD; /* Un fondo súper sutil para el botón activo */
+  --text-dark: #2D3748; /* Gris carbón para títulos, cero azul oscuro */
+  --text-muted: #718096; /* Gris medio para textos secundarios */
+  --bg-app: #FAFAFA;
+  --bg-panel: #FFFFFF;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: var(--bg-app);
+  overflow: hidden;
+}
+
+.app-layout {
+  display: flex;
+  height: 100vh;
+  padding: 24px;
+  gap: 24px;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--bg-panel);
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  padding: 36px 28px 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-logo img {
+  height: 28px;
+}
+
+.sidebar-logo h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text-dark);
+}
+
+.sidebar-logo h2 span {
+  color: var(--brand-blue); 
+}
+
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-nav li {
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  border: 1px solid transparent;
+}
+
+.sidebar-nav li:hover {
+  background-color: #F7FAFC;
+  color: var(--text-dark);
+}
+
+.sidebar-nav li.active {
+  background-color: var(--brand-blue-light);
+  color: var(--brand-blue);
+  border: 1px solid rgba(0, 164, 228, 0.15);
+  font-weight: 600;
+}
+
+.main-content {
+  flex: 1;
+  background-color: var(--bg-panel);
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+  padding: 56px;
+}
+
+.main-content h1 {
+  font-size: 2.2rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--text-dark);
+  margin-bottom: 12px;
+}
+
+.main-content p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+:root {
+  --border-color: #E5E7EB;
+  --header-bg: #F9FAFB;
+  --excel-blue: #00A4E4;
+}
+
+.modern-excel-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Buscador tipo "Pill" moderno */
+.excel-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-pill {
+  display: flex;
+  align-items: center;
+  background: #F3F4F6;
+  padding: 6px 15px;
+  border-radius: 50px;
+  border: 1px solid var(--border-color);
+}
+
+.search-pill input {
+  background: transparent;
+  border: none;
+  outline: none;
+  margin-left: 10px;
+  font-size: 0.9rem;
+  width: 250px;
+}
+
+/* Botones Modernos */
+.btn-primary-modern {
+  background: var(--excel-blue);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+/* La Tabla - Estilo Finanzas Pro */
+.spreadsheet-wrapper {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.modern-spreadsheet {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+/* Cabecera Excel Pro */
+.modern-spreadsheet th {
+  background: var(--header-bg);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  padding: 10px 12px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #6B7280;
+  text-align: left;
+}
+
+/* Celdas con marcado gris fino */
+.modern-spreadsheet td {
+  border-right: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F3F4F6;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+/* Columnas Marcadas */
+.cell-id { width: 30px; text-align: center; color: #9CA3AF; font-size: 0.7rem; }
+.cell-cc { font-family: 'JetBrains Mono', monospace; font-weight: 500; color: var(--excel-blue); }
+.cell-name { font-weight: 700; color: #111827; }
+.cell-center { text-align: center; }
+
+/* Dinero y Tiempo */
+.cell-saldo[data-type="neg"] { color: #DC2626; font-weight: 700; }
+.cell-saldo[data-type="pos"] { color: #059669; font-weight: 700; }
+.cell-wait.critical { color: #DC2626; font-weight: 800; background: #FEF2F2; }
+
+/* Status Pills Modernas */
+.pill-status {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+.pill-status.emergencia { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+.pill-status.normal { background: #DCFCE7; color: #166534; }
+.pill-status.retrasado { background: #FEF3C7; color: #92400E; }
+
+/* Hover de Fila */
+.row-hover:hover {
+  background-color: #F0F9FF;
+}
