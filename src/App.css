@@ -1,228 +1,502 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* La paleta oficial de EstDent basada en tu logo */
 :root {
-  --brand-blue: #00A4E4; /* El cian vibrante de tus letras */
-  --brand-blue-light: #EBF7FD; /* Un fondo súper sutil para el botón activo */
-  --text-dark: #2D3748; /* Gris carbón para títulos, cero azul oscuro */
-  --text-muted: #718096; /* Gris medio para textos secundarios */
-  --bg-app: #FAFAFA;
-  --bg-panel: #FFFFFF;
+  --brand-blue: #00A4E4;
+  --brand-blue-light: #e6f6fc;
+  --bg-app: #f4f7f9;
+  --border-color: #e2e8f0;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Inter', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
-body {
-  background-color: var(--bg-app);
+body { background-color: var(--bg-app); color: var(--text-main); overflow: hidden; height: 100vh; }
+
+.app-container { display: flex; height: 100vh; width: 100vw; }
+
+/* SIDEBAR ESTILO ESTDENT.COM.CO */
+.sidebar { width: 260px; background: white; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 20px 0; }
+.logo-container { padding: 0 24px 30px; text-align: center; }
+.logo { height: 42px; object-fit: contain; }
+
+.nav-menu { display: flex; flex-direction: column; gap: 4px; padding: 0 12px; }
+.nav-menu button { display: flex; align-items: center; padding: 12px 16px; border: none; background: transparent; color: var(--text-muted); font-size: 14px; font-weight: 600; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+.nav-menu button.active { background: var(--brand-blue-light); color: var(--brand-blue); }
+
+/* CONTENIDO PRINCIPAL */
+.main-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 24px; }
+
+/* BARRA DE HERRAMIENTAS */
+.excel-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.search-pill-modern { display: flex; align-items: center; background: white; padding: 10px 20px; border-radius: 50px; border: 1px solid #d1d5db; width: 350px; }
+.search-pill-modern input { border: none; outline: none; width: 100%; margin-left: 10px; font-size: 14px; font-weight: 500; }
+
+.btn-primary-estdent { padding: 10px 20px; background: var(--brand-blue); color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+.btn-export { padding: 8px 16px; border: 1px solid #333; background: white; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; margin-right: 10px; }
+
+/* TABLA SPREADSHEET PRO (Basada en image_7bf16e.png) */
+.excel-table-wrapper { background: white; border-radius: 12px; border: 1px solid var(--border-color); overflow: auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.spreadsheet-pro { width: 100%; border-collapse: collapse; }
+.spreadsheet-pro th { position: sticky; top: 0; background: #f8fafc; padding: 12px 15px; text-align: left; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); border-bottom: 2px solid var(--border-color); border-right: 1px solid var(--border-color); }
+.spreadsheet-pro td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
+
+/* TUS CLASES ESPECÍFICAS */
+.text-brand-blue { color: var(--brand-blue); font-weight: 700; }
+.font-black { font-weight: 900; color: #000; }
+
+.alert-pill { background: #FEF2F2; color: #DC2626; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #FCA5A5; }
+.badge-motivo { background: #F1F5F9; color: #475569; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+
+.status-dot-active { display: inline-block; width: 8px; height: 8px; background: #10B981; border-radius: 50%; margin-right: 5px; }
+
+.pill-status { padding: 5px 12px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 0.5px; }
+.pill-status.emergencia { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.pill-status.retrasado { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.pill-status.normal { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+
+/* MODAL FIJO (Corrección para image_7b1f73.png) */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+.modal-content-pro { background: white; width: 500px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; }
+.modal-expanded { width: 800px; }
+.modal-header { padding: 24px 30px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h2 { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; color: #1e293b; }
+.modal-body { padding: 30px; display: flex; flex-direction: column; gap: 20px; }
+
+.input-main { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; font-size: 15px; font-weight: 600; transition: 0.2s; }
+.input-main:focus { border-color: var(--brand-blue); box-shadow: 0 0 0 4px var(--brand-blue-light); }
+
+.fade-in { animation: fadeInRow 0.3s ease-in-out; }
+@keyframes fadeInRow { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+
+
+
+/* =========================================
+   DISEÑO PREMIUM PARA DASHBOARD DE PACIENTE
+   ========================================= */
+
+.dashboard-premium-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f8fafc; /* Fondo gris ultra claro para contraste */
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
-.app-layout {
-  display: flex;
-  height: 100vh;
-  padding: 24px;
-  gap: 24px;
-}
-
-.sidebar {
-  width: 260px;
-  background-color: var(--bg-panel);
-  border-radius: 20px;
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+/* Header Principal */
+.header-premium {
+  background: white;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
 }
 
-.sidebar-logo {
-  padding: 36px 28px 32px;
-  display: flex;
+.header-top-bar {
+  padding: 20px 30px 0;
+}
+
+.btn-back-pro {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-}
-
-.sidebar-logo img {
-  height: 28px;
-}
-
-.sidebar-logo h2 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: var(--text-dark);
-}
-
-.sidebar-logo h2 span {
-  color: var(--brand-blue); 
-}
-
-.sidebar-nav ul {
-  list-style: none;
-  padding: 0 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sidebar-nav li {
-  padding: 12px 16px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  border-radius: 12px;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  transition: all 0.1s ease;
-  border: 1px solid transparent;
+  transition: color 0.2s;
 }
 
-.sidebar-nav li:hover {
-  background-color: #F7FAFC;
-  color: var(--text-dark);
-}
+.btn-back-pro:hover { color: var(--brand-blue); }
 
-.sidebar-nav li.active {
-  background-color: var(--brand-blue-light);
-  color: var(--brand-blue);
-  border: 1px solid rgba(0, 164, 228, 0.15);
-  font-weight: 600;
-}
-
-.main-content {
-  flex: 1;
-  background-color: var(--bg-panel);
-  border-radius: 20px;
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
-  padding: 56px;
-}
-
-.main-content h1 {
-  font-size: 2.2rem;
-  font-weight: 600;
-  letter-spacing: -0.04em;
-  color: var(--text-dark);
-  margin-bottom: 12px;
-}
-
-.main-content p {
-  color: var(--text-muted);
-  font-size: 1.05rem;
-  line-height: 1.6;
-}
-
-:root {
-  --border-color: #E5E7EB;
-  --header-bg: #F9FAFB;
-  --excel-blue: #00A4E4;
-}
-
-.modern-excel-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-/* Buscador tipo "Pill" moderno */
-.excel-header-actions {
+.header-main-content {
+  padding: 20px 30px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.search-pill {
+.patient-identity {
   display: flex;
   align-items: center;
-  background: #F3F4F6;
-  padding: 6px 15px;
-  border-radius: 50px;
-  border: 1px solid var(--border-color);
+  gap: 20px;
 }
 
-.search-pill input {
+.avatar-pro {
+  width: 64px;
+  height: 64px;
+  background: var(--brand-blue-light);
+  color: var(--brand-blue);
+  border-radius: 16px; /* Cuadrado con bordes curvos tipo Apple */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.patient-name-pro {
+  font-size: 24px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.patient-tags { display: flex; gap: 10px; align-items: center; }
+
+.tag-cc {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.tag-status { font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 6px; }
+.tag-status.active { background: #dcfce7; color: #15803d; }
+.tag-status.inactive { background: #f1f5f9; color: #94a3b8; }
+
+.patient-quick-stats {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  background: #f8fafc;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.stat-divider { width: 1px; height: 20px; background: #cbd5e1; }
+
+/* Pestañas Minimalistas */
+.tabs-premium {
+  display: flex;
+  gap: 30px;
+  padding: 0 30px;
+}
+
+.tab-btn {
+  padding: 16px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover { color: #0f172a; }
+.tab-btn.active { color: var(--brand-blue); border-bottom-color: var(--brand-blue); }
+
+.tab-action { color: #059669; }
+.tab-action:hover { color: #047857; }
+.tab-action.active { border-bottom-color: #059669; }
+
+/* Área de Trabajo y Tarjetas */
+.workspace-premium { padding: 30px; flex: 1; }
+
+.card-premium {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  padding: 30px;
+}
+
+.card-header-pro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.card-header-pro h2 { font-size: 14px; font-weight: 900; color: #0f172a; }
+
+.btn-outline-pro {
+  padding: 8px 16px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-outline-pro:hover { background: #f8fafc; border-color: #94a3b8; color: #0f172a; }
+
+/* Tabla Minimalista Interna */
+.table-minimal-wrapper { overflow-x: auto; }
+.table-minimal { width: 100%; border-collapse: collapse; }
+.table-minimal th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #94a3b8;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+}
+.table-minimal td {
+  padding: 16px;
+  font-size: 13px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.badge-outline {
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Pantallas de Selección */
+.workspace-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+}
+
+.workspace-title { font-size: 14px; font-weight: 900; color: #64748b; margin-bottom: 30px; letter-spacing: 1px; }
+
+.module-grid { display: flex; gap: 20px; }
+
+.module-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 40px;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.module-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--brand-blue);
+  box-shadow: 0 10px 30px rgba(0, 164, 228, 0.1);
+}
+
+.module-card span { font-size: 15px; font-weight: 900; color: #0f172a; }
+.module-card p { font-size: 12px; color: #64748b; text-align: center; line-height: 1.5; }
+.module-card svg { color: var(--brand-blue); }
+
+/* EFECTO DE RESALTE (HOVER) EN LAS TABLAS */
+.row-hover {
+  transition: background-color 0.15s ease-in-out;
+}
+
+.row-hover:hover {
+  background-color: #e2e8f0; /* Gris profesional y notorio al pasar el cursor */
+}
+
+/* Opcional: Oscurece levemente la línea inferior para darle profundidad al seleccionar */
+.row-hover:hover td {
+  border-bottom-color: #cbd5e1; 
+}
+
+
+
+
+
+/* FILTROS TIPO PÍLDORA (Para el Directorio) */
+.filter-pills {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  gap: 4px;
+}
+
+.filter-pills button {
+  background: transparent;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-pills button:hover {
+  color: #0f172a;
+}
+
+.filter-pills button.active {
+  background: white;
+  color: var(--brand-blue);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+
+/* =========================================
+   SCROLLBAR PREMIUM (ESTILO MAC)
+   ========================================= */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Evitar que la tabla del dashboard se estire innecesariamente */
+.table-minimal-wrapper {
+  overflow-x: auto;
+  padding-bottom: 5px; /* Da un respiro sutil al scrollbar invisible */
+}
+
+/* =========================================
+   HERRAMIENTAS EXTRA PARA EL DASHBOARD
+   ========================================= */
+.card-header-pro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+  padding: 0 5px;
+}
+
+.card-header-pro h2 { 
+  font-size: 14px; 
+  font-weight: 900; 
+  color: #0f172a; 
+  margin-bottom: 4px;
+}
+
+.card-header-pro p {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.search-mini {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 8px 12px;
+  border-radius: 8px;
+  gap: 8px;
+}
+
+.search-mini input {
   background: transparent;
   border: none;
   outline: none;
-  margin-left: 10px;
-  font-size: 0.9rem;
-  width: 250px;
+  font-size: 11px;
+  font-weight: 600;
+  width: 150px;
+  color: #0f172a;
 }
 
-/* Botones Modernos */
-.btn-primary-modern {
-  background: var(--excel-blue);
-  color: white;
-  border: none;
-  padding: 8px 18px;
+.table-footer-pro {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  font-size: 12px;
+  margin: 0 -30px -30px -30px; /* Expande el footer al borde de la tarjeta */
+}
+
+.table-footer-pro span { color: #64748b; }
+.table-footer-pro strong { color: #0f172a; font-weight: 900; font-size: 14px; margin-left: 6px; }
+
+/* NUEVOS TAGS MÉDICOS PARA EL HEADER DEL PACIENTE */
+.tag-medical {
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 10px;
   border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-blood {
+  font-size: 11px;
+  font-weight: 900;
+  color: #b91c1c; /* Rojo alerta sutil */
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-info {
+  font-size: 11px;
   font-weight: 700;
-  font-size: 0.75rem;
-  cursor: pointer;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-/* La Tabla - Estilo Finanzas Pro */
-.spreadsheet-wrapper {
-  border: 1px solid var(--border-color);
+.stat-item-pro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  background: #f8fafc;
+  padding: 8px 14px;
   border-radius: 8px;
-  overflow: hidden;
-}
-
-.modern-spreadsheet {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-}
-
-/* Cabecera Excel Pro */
-.modern-spreadsheet th {
-  background: var(--header-bg);
-  border-right: 1px solid var(--border-color);
-  border-bottom: 2px solid var(--border-color);
-  padding: 10px 12px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: #6B7280;
-  text-align: left;
-}
-
-/* Celdas con marcado gris fino */
-.modern-spreadsheet td {
-  border-right: 1px solid #F3F4F6;
-  border-bottom: 1px solid #F3F4F6;
-  padding: 10px 12px;
-  font-size: 0.85rem;
-  color: #374151;
-}
-
-/* Columnas Marcadas */
-.cell-id { width: 30px; text-align: center; color: #9CA3AF; font-size: 0.7rem; }
-.cell-cc { font-family: 'JetBrains Mono', monospace; font-weight: 500; color: var(--excel-blue); }
-.cell-name { font-weight: 700; color: #111827; }
-.cell-center { text-align: center; }
-
-/* Dinero y Tiempo */
-.cell-saldo[data-type="neg"] { color: #DC2626; font-weight: 700; }
-.cell-saldo[data-type="pos"] { color: #059669; font-weight: 700; }
-.cell-wait.critical { color: #DC2626; font-weight: 800; background: #FEF2F2; }
-
-/* Status Pills Modernas */
-.pill-status {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 800;
-}
-.pill-status.emergencia { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
-.pill-status.normal { background: #DCFCE7; color: #166534; }
-.pill-status.retrasado { background: #FEF3C7; color: #92400E; }
-
-/* Hover de Fila */
-.row-hover:hover {
-  background-color: #F0F9FF;
+  border: 1px solid #e2e8f0;
 }

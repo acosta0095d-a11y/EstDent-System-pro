@@ -1,114 +1,47 @@
-import { useState } from "react"; // Necesario para la memoria interna de la vista
-import { Sidebar } from "./components/Sidebar";
-import "./App.css";
+import React, { useState } from 'react';
+import { LayoutDashboard, Users, FlaskConical, Package } from 'lucide-react';
+import PatientRadar from './views/PatientRadar';
+import PatientDashboard from './views/PatientDashboard/PatientDashboard';
+import './App.css';
 
-function App() {
-  // Estado para rastrear qué pestaña está activa.
-  // Empieza en "inicio".
-  const [vistaActiva, setVistaActiva] = useState("inicio");
-
-  // Función pequeña para saber qué mostrar
-  const renderizarPantalla = () => {
-    switch (vistaActiva) {
-      case "inicio":
-        return (
-          <>
-            <h1>Panel de Control de EstDent</h1>
-            <p>Selecciona una opción en el menú izquierdo para comenzar la gestión profesional.</p>
-          </>
-        );
-  case "pacientes":
-        return (
-          <div className="modern-excel-container">
-            <div className="excel-header-actions">
-              <div className="search-pill">
-                <span className="search-icon">🔍</span>
-                <input type="text" placeholder="Buscar por CC o Nombre..." autoFocus />
-              </div>
-              <div className="header-buttons">
-                <button className="btn-secondary">Exportar CSV</button>
-                <button className="btn-primary-modern">+ REGISTRAR ENTRADA</button>
-              </div>
-            </div>
-            
-            <div className="spreadsheet-wrapper">
-              <table className="modern-spreadsheet">
-                <thead>
-                  <tr>
-                    <th className="cell-center">#</th>
-                    <th>CÉDULA / ID</th>
-                    <th>PACIENTE</th>
-                    <th>MOTIVO</th>
-                    <th>INGRESO</th>
-                    <th>ESPERA</th>
-                    <th>SALDO</th>
-                    <th className="cell-center">ESTADO</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { id: "01", cc: "1.023.456", nombre: "PEREZ, JUAN ALBERTO", motivo: "URGENCIA: DOLOR AGUDO", hora: "08:30", espera: "05m", saldo: "-50.000", status: "EMERGENCIA" },
-                    { id: "02", cc: "1.098.765", nombre: "GARCIA, MARIA HELENA", motivo: "CONTROL ORTODONCIA", hora: "08:45", espera: "22m", saldo: "0", status: "NORMAL" },
-                    { id: "03", cc: "1.045.234", nombre: "RUIZ, CARLOS ANDRES", motivo: "EXTRACCIÓN CORDAL", hora: "09:00", espera: "48m", saldo: "+120.000", status: "RETRASADO" },
-                    { id: "04", cc: "1.055.111", nombre: "LOPEZ, DIANA MARCELA", motivo: "VALORACIÓN INICIAL", hora: "09:15", espera: "10m", saldo: "0", status: "NORMAL" },
-                  ].map((p) => (
-                    <tr key={p.id} className="row-hover">
-                      <td className="cell-id">{p.id}</td>
-                      <td className="cell-cc">{p.cc}</td>
-                      <td className="cell-name">{p.nombre}</td>
-                      <td className="cell-motivo">{p.motivo}</td>
-                      <td className="cell-time">{p.hora}</td>
-                      <td className={`cell-wait ${parseInt(p.espera) > 40 ? 'critical' : ''}`}>{p.espera}</td>
-                      <td className="cell-saldo" data-type={p.saldo.startsWith('-') ? 'neg' : 'pos'}>{p.saldo}</td>
-                      <td className="cell-center">
-                        <span className={`pill-status ${p.status.toLowerCase()}`}>{p.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      case "agenda":
-        return (
-          <>
-            <h1>Agenda y Citas</h1>
-            <p>Aquí verás el calendario de citas.</p>
-          </>
-        );
-      case "inventario":
-        return (
-          <>
-            <h1>Inventario</h1>
-            <p>Control de materiales, instrumental médico y pedidos.</p>
-          </>
-        );
-      case "ajustes":
-        return (
-          <>
-            <h1>Configuración del Sistema</h1>
-            <p>Opciones de clínica, usuarios y copias de seguridad de la base de datos.</p>
-          </>
-        );
-      default:
-        return <h1>Vista no encontrada</h1>;
-    }
-  };
+const App = () => {
+  const [vistaActiva, setVistaActiva] = useState("pacientes");
+  const [pacienteSeleccionado, setPacienteSeleccionado] = useState<any>(null);
 
   return (
-    <div className="app-layout">
-      {/* Le pasamos el estado y la función para cambiar el estado al Sidebar 
-        (Aún necesitamos actualizar Sidebar.tsx para que entienda esto)
-      */}
-      <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} /> 
-      
+    <div className="app-container">
+      <aside className="sidebar">
+        <div className="logo-container"><img src="/logo.png" className="logo" alt="EstDent" /></div>
+        <nav className="nav-menu">
+          <button onClick={() => { setVistaActiva("dashboard"); setPacienteSeleccionado(null); }} className={vistaActiva === "dashboard" ? "active" : ""}>
+            <LayoutDashboard size={18} /> Dashboard
+          </button>
+          <button onClick={() => { setVistaActiva("pacientes"); setPacienteSeleccionado(null); }} className={vistaActiva === "pacientes" ? "active" : ""}>
+            <Users size={18} /> Pacientes
+          </button>
+          <button onClick={() => setVistaActiva("laboratorio")} className={vistaActiva === "laboratorio" ? "active" : ""}>
+            <FlaskConical size={18} /> Laboratorio
+          </button>
+          <button onClick={() => setVistaActiva("inventario")} className={vistaActiva === "inventario" ? "active" : ""}>
+            <Package size={18} /> Inventario
+          </button>
+        </nav>
+      </aside>
+
       <main className="main-content">
-        {/* Aquí llamamos a la función que dibuja el contenido correcto */}
-        {renderizarPantalla()}
+        {vistaActiva === "pacientes" && (
+          !pacienteSeleccionado ? (
+            <PatientRadar onSelect={(p: any) => setPacienteSeleccionado(p)} />
+          ) : (
+            <PatientDashboard 
+              paciente={pacienteSeleccionado} 
+              onBack={() => setPacienteSeleccionado(null)} 
+            />
+          )
+        )}
       </main>
     </div>
   );
-}
+};
 
 export default App;
