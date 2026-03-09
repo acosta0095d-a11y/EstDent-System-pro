@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { 
-  ChevronLeft, CalendarDays, ClipboardList, Wallet, 
-  Phone, Mail, MapPin, Droplet, AlertTriangle, PlayCircle, Syringe, Activity, Microscope
+  ChevronLeft, ChevronRight, X, CalendarDays, ClipboardList, Wallet, 
+  Phone, Mail, Droplet, AlertTriangle, PlayCircle, Syringe, Activity, Microscope
 } from 'lucide-react';
 import { usePatient } from '../../context/PatientContext';
 import EntornoGeneral from './EntornoGeneral';
 
 const PatientDashboard = () => {
-  // Pestaña activa del historial/finanzas
   const [pestanaActiva, setPestanaActiva] = useState("historial");
-  // Interruptor para el entorno de trabajo real (Odontograma)
-  const [mostrarEntorno, setMostrarEntorno] = useState(false); 
   
+  // Estados para el flujo de consulta
+  const [mostrarSelector, setMostrarSelector] = useState(false);
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+  const [moduloSeleccionado, setModuloSeleccionado] = useState("");
+  const [mostrarEntorno, setMostrarEntorno] = useState(false); 
+
   const { selectedPatient: paciente, setSelectedPatient } = usePatient();
 
   if (!paciente) return <div style={{padding: '50px', textAlign: 'center', fontWeight: 'bold'}}>Cargando paciente...</div>;
@@ -20,13 +23,162 @@ const PatientDashboard = () => {
     sangre: paciente.sangre || "O+",
     alergias: "Ninguna",
     telefono: paciente.celular || "Sin registrar",
-    correo: paciente.correo || "Sin registrar",
-    ciudad: paciente.ciudad || "Neiva"
+    correo: paciente.correo || "Sin registrar"
   };
+
+  // Función para obtener los textos dinámicos y LOS TONOS DE AZUL
+  const getDetallesConfirmacion = () => {
+    switch(moduloSeleccionado) {
+      case "Ortodoncia":
+        return {
+          titulo: "¿Iniciar Caso de Ortodoncia?",
+          color: "#0284c7", // Azul Cielo / Celeste Profundo
+          icono: <Microscope size={35} color="white" />,
+          desc1: "Se habilitará el registro de controles y evolución de brackets.",
+          desc2: "Se abrirá la ficha de plan de tratamiento ortodóntico."
+        };
+      case "Cirugía":
+        return {
+          titulo: "¿Iniciar Procedimiento Quirúrgico?",
+          color: "#1e40af", // Azul Marino / Navy oscuro
+          icono: <Syringe size={35} color="white" />,
+          desc1: "Se habilitará el entorno seguro para procedimientos invasivos.",
+          desc2: "Registro de extracciones, implantes y notas post-operatorias."
+        };
+      default:
+        return {
+          titulo: "¿Iniciar Valoración General?",
+          color: "var(--brand-blue)", // Azul Corporativo (El principal)
+          icono: <Activity size={35} color="white" />,
+          desc1: "Se habilitará el odontograma técnico completo.",
+          desc2: "Registro de hallazgos, caries, resinas y procedimientos base."
+        };
+    }
+  };
+
+  const detalles = getDetallesConfirmacion();
 
   return (
     <div className="dashboard-premium-container slide-in-bottom">
       
+      {/* 1. ALERTA: SELECCIÓN DIRECTA EN LISTA VERTICAL */}
+      {mostrarSelector && (
+        <div className="modal-overlay fade-in" style={{ zIndex: 11000, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)' }}>
+          <div className="modal-content-pro scale-up" style={{ width: '90%', maxWidth: '550px', background: 'white', borderRadius: '24px', padding: '0', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+            
+            <div style={{ padding: '30px 30px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#0f172a' }}>Iniciar Sesión Clínica</h2>
+                <p style={{ color: '#64748b', fontSize: '13px', marginTop: '5px' }}>Seleccione el área para <strong>{paciente.nombre}</strong></p>
+              </div>
+              <button onClick={() => setMostrarSelector(false)} style={{ background: '#f1f5f9', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <X size={20} color="#64748b" />
+              </button>
+            </div>
+
+            <div style={{ padding: '20px 30px 30px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              {/* Opción GENERAL (Azul Claro) */}
+              <div 
+                className="card-premium shadow-hover" 
+                onClick={() => { setModuloSeleccionado("Odontología General"); setMostrarSelector(false); setMostrarConfirmacion(true); }}
+                style={{ display: 'flex', alignItems: 'center', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ background: '#f0f9ff', padding: '15px', borderRadius: '12px', marginRight: '20px' }}>
+                  <Activity color="var(--brand-blue)" size={28} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontWeight: 900, fontSize: '16px', color: '#1e293b' }}>Odontología General</h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Valoración, odontograma y procedimientos base.</span>
+                </div>
+                <ChevronRight size={20} color="#cbd5e1" />
+              </div>
+
+              {/* Opción ORTODONCIA (Azul Cielo) */}
+              <div 
+                className="card-premium shadow-hover" 
+                onClick={() => { setModuloSeleccionado("Ortodoncia"); setMostrarSelector(false); setMostrarConfirmacion(true); }}
+                style={{ display: 'flex', alignItems: 'center', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ background: '#e0f2fe', padding: '15px', borderRadius: '12px', marginRight: '20px' }}>
+                  <Microscope color="#0284c7" size={28} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontWeight: 900, fontSize: '16px', color: '#1e293b' }}>Ortodoncia</h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Controles, brackets y evolución de ortodoncia.</span>
+                </div>
+                <ChevronRight size={20} color="#cbd5e1" />
+              </div>
+
+              {/* Opción CIRUGÍA (Azul Marino) */}
+              <div 
+                className="card-premium shadow-hover" 
+                onClick={() => { setModuloSeleccionado("Cirugía"); setMostrarSelector(false); setMostrarConfirmacion(true); }}
+                style={{ display: 'flex', alignItems: 'center', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ background: '#dbeafe', padding: '15px', borderRadius: '12px', marginRight: '20px' }}>
+                  <Syringe color="#1e40af" size={28} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontWeight: 900, fontSize: '16px', color: '#1e293b' }}>Cirugía</h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Extracciones, implantes y procedimientos quirúrgicos.</span>
+                </div>
+                <ChevronRight size={20} color="#cbd5e1" />
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. ALERTA DE CONFIRMACIÓN DINÁMICA (EN TONOS AZULES) */}
+      {mostrarConfirmacion && (
+        <div className="modal-overlay fade-in" style={{ zIndex: 11000, background: 'rgba(248, 250, 252, 0.85)', backdropFilter: 'blur(12px)' }}>
+          <div className="modal-content-pro scale-up" style={{ maxWidth: '550px', padding: '0', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.12)', border: '1px solid white' }}>
+            
+            {/* Cabecera dinámica según módulo (Ahora solo en azules) */}
+            <div style={{ background: detalles.color, padding: '35px 30px', textAlign: 'center', transition: 'all 0.3s ease' }}>
+              <div style={{ background: 'rgba(255,255,255,0.2)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}>
+                {detalles.icono}
+              </div>
+              <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'white', margin: 0 }}>{detalles.titulo}</h2>
+            </div>
+
+            <div style={{ padding: '40px 30px', textAlign: 'center', background: 'white' }}>
+              <p style={{ fontSize: '16px', color: '#475569', marginBottom: '15px', lineHeight: '1.6' }}>
+                Estás a punto de abrir el expediente de {moduloSeleccionado} para <strong>{paciente.nombre}</strong>.
+              </p>
+              
+              <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '35px', display: 'inline-block', textAlign: 'left' }}>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#64748b', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <li>{detalles.desc1}</li>
+                  <li>{detalles.desc2}</li>
+                  <li>La cita quedará "En Curso" en la agenda diaria.</li>
+                </ul>
+              </div>
+
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <button 
+                  className="btn-outline-pro" 
+                  onClick={() => { setMostrarConfirmacion(false); setMostrarSelector(true); }} 
+                  style={{ flex: 1, padding: '16px', fontSize: '15px', fontWeight: 800 }}
+                >
+                  Volver a opciones
+                </button>
+                <button 
+                  className="btn-primary-estdent" 
+                  onClick={() => { setMostrarConfirmacion(false); setMostrarEntorno(true); }} 
+                  style={{ flex: 1, padding: '16px', fontSize: '15px', fontWeight: 900, background: detalles.color, border: 'none', boxShadow: `0 10px 20px ${detalles.color}40` }}
+                >
+                  SÍ, INICIAR AHORA
+                </button>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      )}
+
       {/* HEADER PREMIUM */}
       <header className="header-premium">
         <div className="header-top-bar">
@@ -61,18 +213,16 @@ const PatientDashboard = () => {
               <div className="stat-item text-red-500 font-bold"><AlertTriangle size={14} /><span>{infoRapida.alergias}</span></div>
             </div>
 
-            {/* BOTÓN GIGANTE: Ahora lleva al selector de módulos (Lobby) */}
+            {/* BOTÓN GIGANTE */}
             <button 
-              onClick={() => setPestanaActiva("lobby_consultas")} 
+              className="btn-primary-estdent hover:scale-105 active:scale-95" 
               style={{
-                background: 'var(--brand-blue)', color: 'white', border: 'none', borderRadius: '14px',
-                padding: '18px 36px', fontSize: '16px', fontWeight: 900, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: '12px',
-                boxShadow: '0 12px 30px rgba(0, 164, 228, 0.4)', transition: 'all 0.3s ease'
+                padding: '16px 30px', fontSize: '15px', fontWeight: 900, transition: 'all 0.3s ease',
+                boxShadow: '0 10px 25px rgba(0, 164, 228, 0.4)'
               }}
-              className="hover:scale-105 active:scale-95"
+              onClick={() => setMostrarSelector(true)}
             >
-              <PlayCircle size={24} /> INICIAR ATENCIÓN CLÍNICA
+              <PlayCircle size={22} style={{marginRight: '8px'}} /> INICIAR ATENCIÓN CLÍNICA
             </button>
           </div>
         </div>
@@ -120,71 +270,24 @@ const PatientDashboard = () => {
           </div>
         )}
 
-        {/* VISTA 2: EL LOBBY DE SELECCIÓN (LAS 3 OPCIONES GRANDES) */}
-        {pestanaActiva === "lobby_consultas" && (
-          <div className="fade-in flex flex-col items-center justify-center py-10">
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#0f172a' }}>Seleccione el Entorno de Trabajo</h2>
-              <p style={{ color: '#64748b', fontWeight: 600 }}>El sistema cargará las herramientas específicas según el módulo</p>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '30px', maxWidth: '1100px', width: '100%', padding: '0 20px' }}>
-              
-              {/* OPCIÓN 1: GENERAL */}
-              <div 
-                className="module-card card-premium shadow-lg hover:shadow-2xl transition-all" 
-                style={{ cursor: 'pointer', borderTop: '6px solid var(--brand-blue)', textAlign: 'center' }}
-                onClick={() => setMostrarEntorno(true)} // <--- ESTO DISPARA EL ENTORNO (CON SU CONFIRMACIÓN)
-              >
-                <div style={{ background: 'var(--brand-blue-light)', color: 'var(--brand-blue)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                  <Activity size={32} />
-                </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 900, marginBottom: '12px' }}>ODONTOLOGÍA GENERAL</h3>
-                <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>Odontograma digital, resinas, profilaxis, exodoncias simples y evolución narrativa.</p>
-              </div>
+        {pestanaActiva === "historia_clinica" && (
+           <div className="card-premium fade-in">
+              <h2 className="workspace-title">HISTORIA CLÍNICA COMPLETA</h2>
+              <p style={{color: '#64748b'}}>Datos demográficos, antecedentes y registro legal del paciente.</p>
+           </div>
+        )}
 
-              {/* OPCIÓN 2: ORTODONCIA */}
-              <div 
-                className="module-card card-premium shadow-lg hover:shadow-2xl transition-all" 
-                style={{ cursor: 'pointer', borderTop: '6px solid #8b5cf6', textAlign: 'center' }}
-                onClick={() => alert("Módulo de Ortodoncia en construcción")}
-              >
-                <div style={{ background: '#ede9fe', color: '#8b5cf6', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                  <Microscope size={32} />
-                </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 900, marginBottom: '12px' }}>ORTODONCIA</h3>
-                <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>Control de brackets, arcos NiTi/Acero, elásticos intermaxilares y seguimiento fotográfico.</p>
-              </div>
-
-              {/* OPCIÓN 3: CIRUGÍA / IMPLANTES */}
-              <div 
-                className="module-card card-premium shadow-lg hover:shadow-2xl transition-all" 
-                style={{ cursor: 'pointer', borderTop: '6px solid #ec4899', textAlign: 'center' }}
-                onClick={() => alert("Módulo de Cirugía en construcción")}
-              >
-                <div style={{ background: '#fce7f3', color: '#ec4899', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                  <Syringe size={32} />
-                </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 900, marginBottom: '12px' }}>CIRUGÍA E IMPLANTES</h3>
-                <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>Planeación quirúrgica, implantes dentales, injertos y protocolos post-operatorios.</p>
-              </div>
-
-            </div>
-
-            <button 
-              className="btn-outline-pro" 
-              style={{ marginTop: '50px' }}
-              onClick={() => setPestanaActiva("historial")}
-            >
-              Cancelar y volver al historial
-            </button>
-          </div>
+        {pestanaActiva === "finanzas" && (
+           <div className="card-premium fade-in">
+              <h2 className="workspace-title">ESTADO DE CUENTA</h2>
+              <p style={{color: '#64748b'}}>Balances, abonos y deudas pendientes.</p>
+           </div>
         )}
 
       </div>
 
       {/* =======================================================
-          OVERLAY DEL ENTORNO GIGANTE (Aquí está la confirmación)
+          OVERLAY DEL ENTORNO GIGANTE (Entorno Clínico)
           ======================================================= */}
       {mostrarEntorno && (
         <EntornoGeneral onExit={() => setMostrarEntorno(false)} />
