@@ -1,47 +1,66 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Users, FlaskConical, Package } from 'lucide-react';
+import React from 'react';
+import { PatientProvider, usePatient } from './context/PatientContext';
+import { Sidebar } from './components/Sidebar';
 import PatientRadar from './views/PatientRadar';
 import PatientDashboard from './views/PatientDashboard/PatientDashboard';
+import Agenda from './views/Agenda'; // <--- LA PIEZA QUE FALTABA
 import './App.css';
 
-const App = () => {
-  const [vistaActiva, setVistaActiva] = useState("pacientes");
-  const [pacienteSeleccionado, setPacienteSeleccionado] = useState<any>(null);
+const AppContent = () => {
+  const { currentView, selectedPatient } = usePatient();
 
   return (
     <div className="app-container">
-      <aside className="sidebar">
-        <div className="logo-container"><img src="/logo.png" className="logo" alt="EstDent" /></div>
-        <nav className="nav-menu">
-          <button onClick={() => { setVistaActiva("dashboard"); setPacienteSeleccionado(null); }} className={vistaActiva === "dashboard" ? "active" : ""}>
-            <LayoutDashboard size={18} /> Dashboard
-          </button>
-          <button onClick={() => { setVistaActiva("pacientes"); setPacienteSeleccionado(null); }} className={vistaActiva === "pacientes" ? "active" : ""}>
-            <Users size={18} /> Pacientes
-          </button>
-          <button onClick={() => setVistaActiva("laboratorio")} className={vistaActiva === "laboratorio" ? "active" : ""}>
-            <FlaskConical size={18} /> Laboratorio
-          </button>
-          <button onClick={() => setVistaActiva("inventario")} className={vistaActiva === "inventario" ? "active" : ""}>
-            <Package size={18} /> Inventario
-          </button>
-        </nav>
-      </aside>
-
+      <Sidebar />
       <main className="main-content">
-        {vistaActiva === "pacientes" && (
-          !pacienteSeleccionado ? (
-            <PatientRadar onSelect={(p: any) => setPacienteSeleccionado(p)} />
-          ) : (
-            <PatientDashboard 
-              paciente={pacienteSeleccionado} 
-              onBack={() => setPacienteSeleccionado(null)} 
-            />
-          )
+        
+        {/* VISTA DE INICIO (Placeholder temporal) */}
+        {currentView === 'inicio' && (
+          <div className="fade-in" style={{ padding: '40px' }}>
+            <h1 className="patient-name-pro">Bienvenido a EstDent Pro</h1>
+          </div>
         )}
+
+        {/* =======================================================
+            EL MÓDULO DE PACIENTES (Navegación Anidada Real)
+            ======================================================= */}
+        {currentView === 'pacientes' && (
+          <>
+            {/* Si NO hay paciente seleccionado, mostramos el Radar */}
+            {!selectedPatient && <PatientRadar />}
+            
+            {/* Si SÍ hay paciente seleccionado, mostramos su Expediente */}
+            {selectedPatient && <PatientDashboard />}
+          </>
+        )}
+
+        {/* =======================================================
+            LA AGENDA (TURNERO / SALA DE ESPERA)
+            ======================================================= */}
+        {currentView === 'agenda' && <Agenda />}
+
+        {/* MÓDULO DE INVENTARIO Y AJUSTES */}
+        {currentView === 'inventario' && (
+          <div className="fade-in" style={{ padding: '40px' }}>
+            <h1 className="patient-name-pro">Módulo de Inventario</h1>
+          </div>
+        )}
+
+        {currentView === 'ajustes' && (
+          <div className="fade-in" style={{ padding: '40px' }}>
+            <h1 className="patient-name-pro">Configuración del Sistema</h1>
+          </div>
+        )}
+
       </main>
     </div>
   );
 };
 
-export default App;
+export default function App() {
+  return (
+    <PatientProvider>
+      <AppContent />
+    </PatientProvider>
+  );
+}

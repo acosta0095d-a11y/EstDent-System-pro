@@ -1,47 +1,47 @@
-import logoIcon from "../assets/logo.png"; // Usamos el nombre correcto del archivo
+import React from 'react';
+import { Users, Calendar, Package, Settings, Home } from 'lucide-react';
+import { usePatient } from '../context/PatientContext';
 
-export function Sidebar({ vistaActiva, setVistaActiva }: any) {
+export const Sidebar = () => {
+  // EXTRAEMOS setSelectedPatient PARA PODER LIMPIAR LA MEMORIA
+  const { currentView, setCurrentView, setSelectedPatient } = usePatient();
+
   return (
-    <div className="sidebar">
-      <div className="sidebar-logo">
-        {/* Aquí ya debería cargar tu logo correctamente */}
-        <img src={logoIcon} alt="EstDent Logo" style={{ height: '32px', width: 'auto' }} />
-        <h2><span>EstDent</span> Pro</h2>
+    <aside className="sidebar">
+      <div className="logo-container">
+        <h1 style={{ fontSize: '28px', fontWeight: 900, color: 'var(--brand-blue)', letterSpacing: '-1px' }}>
+          EstDent
+        </h1>
       </div>
-      <nav className="sidebar-nav">
-        <ul>
-          <li 
-            className={vistaActiva === "inicio" ? "active" : ""} 
-            onClick={() => setVistaActiva("inicio")}
-          >
-            Inicio
-          </li>
-          <li 
-            className={vistaActiva === "pacientes" ? "active" : ""} 
-            onClick={() => setVistaActiva("pacientes")}
-          >
-            Pacientes
-          </li>
-          <li 
-            className={vistaActiva === "agenda" ? "active" : ""} 
-            onClick={() => setVistaActiva("agenda")}
-          >
-            Agenda
-          </li>
-          <li 
-            className={vistaActiva === "inventario" ? "active" : ""} 
-            onClick={() => setVistaActiva("inventario")}
-          >
-            Inventario
-          </li>
-          <li 
-            className={vistaActiva === "ajustes" ? "active" : ""} 
-            onClick={() => setVistaActiva("ajustes")}
-          >
-            Ajustes
-          </li>
-        </ul>
+
+      <nav className="nav-menu">
+        <button className={currentView === 'inicio' ? 'active' : ''} onClick={() => setCurrentView('inicio')}>
+          <Home size={18} style={{ marginRight: '10px' }} /> Inicio
+        </button>
+        
+        {/* EL BOTÓN REPARADO: Ahora cambia la vista Y limpia al paciente seleccionado */}
+        <button 
+          className={currentView === 'pacientes' ? 'active' : ''} 
+          onClick={() => {
+            setCurrentView('pacientes');
+            setSelectedPatient(null); // <-- ESTO MATA AL FANTASMA DEL PACIENTE ANTERIOR
+          }}
+        >
+          <Users size={18} style={{ marginRight: '10px' }} /> Pacientes
+        </button>
+        
+        <button className={currentView === 'agenda' ? 'active' : ''} onClick={() => setCurrentView('agenda')}>
+          <Calendar size={18} style={{ marginRight: '10px' }} /> Agenda
+        </button>
+        
+        <button className={currentView === 'inventario' ? 'active' : ''} onClick={() => setCurrentView('inventario')}>
+          <Package size={18} style={{ marginRight: '10px' }} /> Inventario
+        </button>
+
+        <button className={currentView === 'ajustes' ? 'active' : ''} onClick={() => setCurrentView('ajustes')}>
+          <Settings size={18} style={{ marginRight: '10px' }} /> Ajustes
+        </button>
       </nav>
-    </div>
+    </aside>
   );
-}
+};
