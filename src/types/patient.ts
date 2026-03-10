@@ -1,19 +1,17 @@
-// src/types/patient.ts
 export interface Patient {
   id: string;
-  name: string;
-  age: number;
-  gender: string;
-  phone: string;
-  email: string;
-  address: string;
-  lastVisit: string;
-  nextAppt: string;
-  status: 'Active' | 'Inactive' | 'Pending';
-  balance: number;
-  treatment: string;
+  cc: string;
+  nombre: string;
+  edad: number;
+  sangre: string;
+  sexo: 'M' | 'F' | string;
+  celular: string;
+  correo: string;
+  ciudad: string;
+  fechaRegistro: string;
+  totalCitas: number;
+  ultimaVisita: string;
+  estado: 'ACTIVO' | 'INACTIVO';
 }
 
-export type ViewType = 'radar' | 'dashboard' | 'calendar' | 'inventory';
-
-
+export type ViewType = 'inicio' | 'pacientes' | 'agenda' | 'inventario' | 'ajustes';

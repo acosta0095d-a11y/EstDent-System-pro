@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   ChevronLeft, ChevronRight, X, CalendarDays, ClipboardList, Wallet, 
   Phone, Mail, Droplet, AlertTriangle, PlayCircle, Syringe, Activity, Microscope

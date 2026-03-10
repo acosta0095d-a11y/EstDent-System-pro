@@ -1,4 +1,3 @@
-import React from 'react';
 import { PatientProvider, usePatient } from './context/PatientContext';
 import { Sidebar } from './components/Sidebar';
 import PatientRadar from './views/PatientRadar';

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Search, Plus, Download, X } from 'lucide-react';
 import { usePatient } from '../context/PatientContext';
+import type { Patient } from '../types/patient';
 
 const PatientRadar = () => {
   // ESTADOS DEL MOTOR DE BÚSQUEDA Y UI
@@ -12,7 +13,7 @@ const PatientRadar = () => {
   const { setSelectedPatient } = usePatient();
 
   // BASE DE DATOS SIMULADA
-  const directorioPacientes = [
+  const directorioPacientes: Patient[] = [
     { id: "101", cc: "1023456", nombre: "PEREZ, JUAN ALBERTO", edad: 34, sangre: "O+", sexo: "M", celular: "3154829901", correo: "juan.perez@email.com", ciudad: "Neiva", fechaRegistro: "15/01/2025", totalCitas: 8, ultimaVisita: "10/02/2026", estado: "ACTIVO" },
     { id: "102", cc: "1098765", nombre: "GARCIA, MARIA HELENA", edad: 28, sangre: "A-", sexo: "F", celular: "3208451122", correo: "mhelenag@email.com", ciudad: "Neiva", fechaRegistro: "20/11/2025", totalCitas: 3, ultimaVisita: "01/03/2026", estado: "ACTIVO" },
     { id: "103", cc: "1045234", nombre: "RUIZ, CARLOS ANDRES", edad: 45, sangre: "O+", sexo: "M", celular: "3105557788", correo: "cruiz_88@email.com", ciudad: "Palermo", fechaRegistro: "05/03/2024", totalCitas: 15, ultimaVisita: "15/12/2025", estado: "INACTIVO" }

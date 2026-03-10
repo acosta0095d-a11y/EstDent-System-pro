@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { Patient, ViewType } from '../types/patient';
 
 interface PatientContextType {
@@ -12,7 +12,7 @@ const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
 export const PatientProvider = ({ children }: { children: ReactNode }) => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [currentView, setCurrentView] = useState<ViewType>('radar');
+  const [currentView, setCurrentView] = useState<ViewType>('inicio');
 
   return (
     <PatientContext.Provider value={{ 

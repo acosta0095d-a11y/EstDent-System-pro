@@ -1,4 +1,3 @@
-import React from 'react';
 import { Users, Calendar, Package, Settings, Home } from 'lucide-react';
 import { usePatient } from '../context/PatientContext';
 
