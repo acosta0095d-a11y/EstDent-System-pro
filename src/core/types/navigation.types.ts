@@ -1,0 +1,1 @@
+export type ViewType = 'inicio' | 'pacientes' | 'agenda' | 'inventario' | 'ajustes';

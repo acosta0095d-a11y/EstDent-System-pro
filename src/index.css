@@ -1,0 +1,472 @@
+/* ============================================
+   ESTDENT - ESTILOS PROFESIONALES
+   Minimalista · Moderno · Animado
+   ============================================ */
+
+/* ---------- RESET Y VARIABLES ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --brand-blue: #00A4E4;
+  --brand-blue-light: #e6f6fc;
+  --bg-app: #f8fafc;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --transition: all 0.2s ease;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* ---------- SIDEBAR PROFESIONAL ---------- */
+.sidebar {
+  width: 260px;
+  background: white;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  height: 100vh;
+  position: fixed;
+  box-shadow: var(--shadow-sm);
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.logo-container {
+  padding: 0 24px 32px;
+}
+
+.logo-container h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand-blue);
+  letter-spacing: -0.5px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 16px;
+}
+
+.nav-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+  width: 100%;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-menu button::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: var(--brand-blue);
+  opacity: 0.1;
+  transition: width 0.2s ease;
+  z-index: 0;
+}
+
+.nav-menu button:hover::before {
+  width: 100%;
+}
+
+.nav-menu button:hover {
+  color: var(--brand-blue);
+  transform: translateX(4px);
+}
+
+.nav-menu button.active {
+  background: var(--brand-blue-light);
+  color: var(--brand-blue);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-menu button.active::before {
+  display: none;
+}
+
+.nav-menu button svg {
+  transition: transform 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.nav-menu button:hover svg {
+  transform: scale(1.1);
+}
+
+.nav-menu button span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- MAIN CONTENT ---------- */
+.main-content {
+  margin-left: 260px;
+  padding: 32px;
+  min-height: 100vh;
+  background: var(--bg-app);
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* ---------- TABLA DE PACIENTES (RADAR) ---------- */
+.patients-table {
+  width: 100%;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.patients-table th {
+  background: #f8fafc;
+  padding: 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.patients-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: background 0.15s ease;
+}
+
+.patients-table tbody tr {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.patients-table tbody tr:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.patients-table tbody tr:active {
+  transform: translateY(0);
+}
+
+/* Badge de estado */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  animation: scaleIn 0.2s ease;
+}
+
+.status-badge.active {
+  background: #10b981;
+  color: white;
+}
+
+.status-badge.inactive {
+  background: #ef4444;
+  color: white;
+}
+
+/* ---------- PERFIL DEL PACIENTE ---------- */
+.profile-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.profile-card h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.profile-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.profile-info p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.profile-info strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+/* Botón volver */
+.back-button {
+  margin-bottom: 20px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-button:hover {
+  background: #f1f5f9;
+  color: var(--brand-blue);
+  border-color: var(--brand-blue);
+  transform: translateX(-4px);
+}
+
+/* Botón nueva consulta */
+.new-consult-btn {
+  background: var(--brand-blue);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-consult-btn:hover {
+  background: #0093d1;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.new-consult-btn:active {
+  transform: translateY(0);
+}
+
+/* ---------- MODAL ---------- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: white;
+  padding: 32px;
+  border-radius: 20px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: var(--shadow-md);
+  animation: scaleIn 0.3s ease-out;
+}
+
+.modal-content h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.modal-content p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.modal-option {
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-bottom: 12px;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-option.odontologia {
+  background: var(--brand-blue);
+  color: white;
+}
+
+.modal-option.ortodoncia {
+  background: #0284c7;
+  color: white;
+}
+
+.modal-option:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+.modal-option:active {
+  transform: translateY(0);
+}
+
+.modal-cancel {
+  margin-top: 16px;
+  padding: 12px;
+  width: 100%;
+  background: #f1f5f9;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.modal-cancel:hover {
+  background: #e2e8f0;
+  color: var(--text-primary);
+}
+
+/* ---------- ANIMACIONES ---------- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ---------- UTILIDADES ---------- */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
