@@ -4,7 +4,7 @@ import { Sidebar } from './shared/components/Sidebar';
 import { PatientRadar } from './features/patients/pages/PatientRadar';
 import { PatientDashboard } from './features/patients/pages/PatientDashboard';
 import { GeneralConsultation } from './features/consultation/pages/GeneralConsultation';
-// import { OrthoConsultation } from './features/consultation/pages/OrthoConsultation'; // Comentada por ahora
+import { OrthoConsultation } from './features/consultation/pages/OrthoConsultation'; // ¡Descomentado!
 
 // Layout principal con Sidebar y navegación
 const MainLayout = () => {
@@ -54,19 +54,19 @@ const MainLayout = () => {
   );
 };
 
-// Wrapper para consulta general (la que estamos trabajando)
+// Wrapper para consulta general
 const GeneralConsultaWrapper = () => {
   return (
     <GeneralConsultation onExit={() => window.history.back()} />
   );
 };
 
-// Wrapper para ortodoncia (comentado hasta que la necesitemos)
-// const OrthoConsultaWrapper = () => {
-//   return (
-//     <OrthoConsultation onExit={() => window.history.back()} />
-//   );
-// };
+// Wrapper para ortodoncia ¡Descomentado y activado!
+const OrthoConsultaWrapper = () => {
+  return (
+    <OrthoConsultation onExit={() => window.history.back()} />
+  );
+};
 
 function App() {
   return (
@@ -76,11 +76,11 @@ function App() {
           {/* Ruta principal con Sidebar */}
           <Route path="/*" element={<MainLayout />} />
           
-          {/* Ruta de consulta general (la que estamos usando) */}
+          {/* Ruta de consulta general */}
           <Route path="/consulta/general" element={<GeneralConsultaWrapper />} />
           
-          {/* Ruta de ortodoncia (comentada) */}
-          {/* <Route path="/consulta/ortodoncia" element={<OrthoConsultaWrapper />} /> */}
+          {/* Ruta de ortodoncia ¡Descomentada y lista! */}
+          <Route path="/consulta/ortodoncia" element={<OrthoConsultaWrapper />} />
         </Routes>
       </PatientProvider>
     </BrowserRouter>
