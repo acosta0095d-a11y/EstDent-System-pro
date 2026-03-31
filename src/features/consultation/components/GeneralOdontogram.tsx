@@ -32,7 +32,7 @@ const COLORS = {
   corona: '#f59e0b',
   extraccion: '#6b7280',
   sellante: '#3b82f6',
-  primary: '#00A4E4',
+  primary: '#0071e3',
   primaryLight: '#e0f2fe',
   primaryDark: '#0284c7',
   success: '#10b981',
@@ -322,7 +322,7 @@ const ToothGraphic = React.memo(({ number, faces, ausente, onFaceClick, hasMark,
 // 5. COMPONENTE PRINCIPAL CON CONEXIÓN AL PADRE
 // ============================================
 
-// ✅ CAMBIO 1: AHORA RECIBE PROPS PARA AVISARLE AL PADRE
+// CAMBIO 1: AHORA RECIBE PROPS PARA AVISARLE AL PADRE
 export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }: any) => {
   const [activeState, setActiveState] = useState(STATES[0].id);
   const [activeTool, setActiveTool] = useState(CLINICAL_TOOLS[0].id);
@@ -336,6 +336,42 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
   const [showHelp, setShowHelp] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false); // Guardia para evitar bucles
+
+  // REHIDRATACIÓN: Cargar datos desde Supabase al estado local
+  useEffect(() => {
+    // Si ya cargamos una vez, o no hay datos, no hacemos nada
+    if (isLoaded || !value || !Array.isArray(value) || value.length === 0) return;
+
+    const restoredData: Record<string, ToothData> = {};
+    
+    value.forEach((hallazgo: any) => {
+      const num = hallazgo.diente;
+      if (!restoredData[num]) {
+        restoredData[num] = { 
+          number: num, ausente: false, 
+          faces: { oclusal: COLORS.healthy, vestibular: COLORS.healthy, lingual: COLORS.healthy, mesial: COLORS.healthy, distal: COLORS.healthy },
+          marks: []
+        };
+      }
+
+      if (hallazgo.tipo === 'ausente') {
+        restoredData[num].ausente = true;
+      } else {
+        const tool = CLINICAL_TOOLS.find(t => t.id === hallazgo.tipo);
+        if (tool && hallazgo.superficie) {
+          restoredData[num].faces[hallazgo.superficie as keyof FaceData] = tool.color;
+          restoredData[num].marks.push({
+            face: hallazgo.superficie, tool: hallazgo.tipo,
+            state: hallazgo.severidad, timestamp: Date.now()
+          });
+        }
+      }
+    });
+
+    setTeethData(restoredData);
+    setIsLoaded(true); // Bloqueamos futuras recargas para que no haya bucle
+  }, [value, isLoaded]);
   
   const upperTeeth = ['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28'];
   const lowerTeeth = ['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'];
@@ -473,45 +509,47 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // ✅ CAMBIO 2: EL MOTOR QUE AVISA AL PADRE CADA VEZ QUE PINTAS ALGO
+  // 🚀 SINCRONIZACIÓN: Avisar al padre para guardar en Supabase
+  // Usamos un Ref para comparar y evitar que el Padre se vuelva loco
+  const lastUpdateRef = React.useRef("");
+
   useEffect(() => {
     const hallazgosExportar: any[] = [];
-    
-    // Convertimos tus datos de dientes en un array plano para el Formulario Padre
+
     Object.values(teethData).forEach(diente => {
-      // 1. Dientes ausentes
       if (diente.ausente) {
         hallazgosExportar.push({
-          id: `ausente-${diente.number}`,
-          diente: diente.number,
-          tipo: 'ausente',
-          descripcion: 'Diente marcado como ausente',
-          fechaRegistro: new Date().toISOString()
+          id: `aus-${diente.number}`,
+          diente: diente.number, tipo: 'ausente',
+          descripcion: 'Diente ausente', fechaRegistro: new Date().toISOString()
         });
       }
       
-      // 2. Marcas (Caries, Resinas, etc.)
       if (diente.marks && diente.marks.length > 0) {
         diente.marks.forEach(marca => {
           hallazgosExportar.push({
-            id: `marca-${diente.number}-${marca.tool}-${marca.face}`,
-            diente: diente.number,
-            tipo: marca.tool, // caries, resina, etc.
-            superficie: marca.face,
-            severidad: marca.state, // pendiente, realizado, etc.
-            descripcion: `Marcado en cara ${marca.face}`,
-            fechaRegistro: new Date(marca.timestamp).toISOString()
+            id: `m-${diente.number}-${marca.tool}-${marca.face}`,
+            diente: diente.number, tipo: marca.tool,
+            superficie: marca.face, severidad: marca.state,
+            descripcion: `Cara ${marca.face}`, fechaRegistro: new Date(marca.timestamp).toISOString()
           });
         });
       }
     });
 
-    // Si el padre nos pasó las funciones, se las disparamos con los datos
-    if (onHistoryChange) onHistoryChange(hallazgosExportar);
+    // VÁLVULA DE SEGURIDAD: Solo avisamos al padre si los datos CAMBIARON de verdad
+    // Excluimos campo `fechaRegistro` (puede cambiar cada render) para comparación estable
+    const currentDataStr = JSON.stringify(hallazgosExportar.map(({ fechaRegistro, ...rest }) => rest));
+    if (lastUpdateRef.current === currentDataStr) return;
+
+    lastUpdateRef.current = currentDataStr;
+
+    // Avisamos al padre
     if (onChange) onChange(hallazgosExportar);
     if (onUpdate) onUpdate(hallazgosExportar);
-    
-  }, [teethData, onHistoryChange, onChange, onUpdate]);
+    if (onHistoryChange) onHistoryChange(hallazgosExportar);
+
+  }, [teethData]); // Solo reacciona a cambios en los dientes, no a las funciones del padre
 
   return (
     <div style={{ 
@@ -525,35 +563,98 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
       color: COLORS.text
     }}>
       <style>{`
-        .tooth-container { transition: transform 0.2s ease; }
-        .tooth-container:hover { transform: scale(1.1); z-index: 10; }
-        .face-hover { filter: brightness(1.2); }
+        .tooth-container { 
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+          cursor: pointer;
+        }
+        .tooth-container:hover { 
+          transform: scale(1.15) translateY(-2px); 
+          z-index: 10; 
+          filter: drop-shadow(0 8px 16px rgba(0, 113, 227, 0.2));
+        }
+        .tooth-container:active { 
+          transform: scale(1.08) translateY(0px); 
+          transition: all 0.1s ease;
+        }
+        .face-hover { 
+          filter: brightness(1.1) saturate(1.2); 
+          transition: filter 0.2s ease;
+        }
+        .tooth-selected {
+          animation: toothPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes toothPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(0, 113, 227, 0.4); }
+          50% { box-shadow: 0 0 0 8px rgba(0, 113, 227, 0); }
+        }
         .custom-select {
           appearance: none;
           background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
           background-repeat: no-repeat;
           background-position: right 1rem center;
           background-size: 1em;
+          transition: all 0.2s ease;
+        }
+        .custom-select:focus {
+          box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+          border-color: ${COLORS.primary};
         }
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
+          from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes slideInUp {
+          from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeIn {
-          animation: fadeIn 0.3s ease;
+          animation: fadeIn 0.4s ease-out;
+        }
+        .animate-slideInUp {
+          animation: slideInUp 0.3s ease-out;
         }
         .glass-panel {
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.2);
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(255,255,255,0.3);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.08);
         }
         .tool-button {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+        }
+        .tool-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+          transition: left 0.5s;
+        }
+        .tool-button:hover::before {
+          left: 100%;
+        }
+        .tool-button:hover {
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+        .tool-button:active {
+          transform: translateY(-1px) scale(0.98);
+          transition: all 0.1s ease;
+        }
+        .odontogram-grid {
+          animation: fadeIn 0.6s ease-out;
+        }
+        .legend-item {
           transition: all 0.2s ease;
           cursor: pointer;
         }
-        .tool-button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        .legend-item:hover {
+          transform: translateX(4px);
         }
       `}</style>
 
@@ -575,6 +676,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
             <button
               key={state.id}
               onClick={() => setActiveState(state.id)}
+              title={state.longDescription}
               style={{
                 padding: '8px 16px',
                 background: activeState === state.id ? state.color : 'white',
@@ -588,8 +690,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
                 alignItems: 'center',
                 gap: '6px',
                 transition: 'all 0.2s',
-                boxShadow: activeState === state.id ? `0 2px 8px ${state.color}80` : 'none',
-                title: state.longDescription
+                boxShadow: activeState === state.id ? `0 2px 8px ${state.color}80` : 'none'
               }}
             >
               <state.icon size={14} />

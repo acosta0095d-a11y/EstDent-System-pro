@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { usePatient } from '../../../core/context/PatientContext';
 import { GeneralOdontogram } from '../components/GeneralOdontogram';
+// 👇 IMPORTACIÓN DE LA BASE DE DATOS 👇
+import { supabase } from '../../../shared/lib/supabase';
 import { 
   Clock, Save, ChevronLeft, Plus, Pill, Microscope, 
   Scissors, FileText, X, AlertCircle, CheckCircle, 
@@ -15,7 +17,7 @@ import {
 // ============================================================================
 
 const COLORS = {
-  primary: '#00A4E4', primaryLight: '#e0f2fe', primaryDark: '#0284c7',
+  primary: '#0071e3', primaryLight: '#e0f2fe', primaryDark: '#0284c7',
   secondary: '#64748b', secondaryLight: '#f8fafc',
   success: '#10b981', successLight: '#d1fae5',
   warning: '#f59e0b', warningLight: '#fef3c7',
@@ -71,7 +73,7 @@ interface HallazgoOdontograma { id: string; diente: string; tipo: string; superf
 interface Procedimiento { id: string; nombre: string; pieza: string; cara: string; observaciones: string; fecha: string; migradoDesdeOdontograma?: boolean; hallazgoOrigen?: string; tipoHallazgo?: string; estado: 'sugerido' | 'presupuestado' | 'aprobado' | 'realizado'; costo: number; }
 interface Diagnostico { id: string; codigo: string; nombre: string; tipo: 'principal' | 'secundario' | 'hallazgo'; diente?: string; migradoDesdeOdontograma?: boolean; tipoHallazgo?: string; }
 interface Receta { id: string; medicamento: string; dosis: string; frecuencia: string; duracion: string; indicaciones: string; }
-interface Props { onExit: () => void; }
+interface Props { onExit: () => void; onSave?: (data: any) => Promise<any>; initialData?: any; }
 
 const formatCOP = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
 
@@ -79,7 +81,7 @@ const formatCOP = (value: number) => new Intl.NumberFormat('es-CO', { style: 'cu
 // 2. COMPONENTE PRINCIPAL
 // ============================================================================
 
-export const GeneralConsultation = ({ onExit }: Props) => {
+export const GeneralConsultation = ({ onExit, onSave, initialData }: Props) => {
   const { selectedPatient } = usePatient();
   
   const [activeTab, setActiveTab] = useState('anamnesis');
@@ -87,14 +89,14 @@ export const GeneralConsultation = ({ onExit }: Props) => {
   const [isSaved, setIsSaved] = useState(false);
   const [showMigracionModal, setShowMigracionModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false); // NUEVO ESTADO PARA CANCELAR
+  const [showCancelModal, setShowCancelModal] = useState(false); 
   const [mensajeConfirmacion, setMensajeConfirmacion] = useState('');
   
   const [motivo, setMotivo] = useState('');
   const [motivoSeleccionado, setMotivoSeleccionado] = useState<string[]>([]);
   const [estadoGeneral, setEstadoGeneral] = useState({ actitud: 'Colaborador', higieneOral: 'Regular', alertaMedica: '' });
   const [evaluacionDolor, setEvaluacionDolor] = useState({ escala: 0, caracteristicas: [] as string[], desencadenantes: [] as string[], evolucion: '' });
-  const [examenEstomatologico, setExamenEstomatologico] = useState({ atm: 'Sin alteraciones', labios: 'Sin alteraciones', lengua: 'Sin alteraciones', paladar: 'Sin alteraciones', pisoBoca: 'Sin alteraciones', encias: 'Sin alteraciones', observaciones: '' });
+  const [examenEstomatologico, setExamenEstomatologico] = useState({ atm: 'Sin alteraciones', labios: 'Sin alteraciones', lengua: 'Sin alteraciones', paladar: 'Sin alteraciones', pisoBoca: 'Sin alteraciones', encias: 'Sin alteraciones', observaciones: '', carrillos: 'Sin alteraciones' });
   const [busquedaCie10, setBusquedaCie10] = useState('');
   
   const [hallazgosOdontograma, setHallazgosOdontograma] = useState<HallazgoOdontograma[]>([]);
@@ -106,6 +108,27 @@ export const GeneralConsultation = ({ onExit }: Props) => {
   const [nuevaReceta, setNuevaReceta] = useState({ medicamento: '', dosis: '', frecuencia: '', duracion: '', indicaciones: '' });
   const [consentimiento, setConsentimiento] = useState(false);
   const [alertaSeguridadReceta, setAlertaSeguridadReceta] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialData) {
+      setMotivo(initialData.motivo_principal || initialData.motivo || '');
+      setMotivoSeleccionado(initialData.motivo_tags || initialData.motivoSeleccionado || []);
+      setEstadoGeneral(initialData.estado_general || initialData.estadoGeneral || { actitud: 'Colaborador', higieneOral: 'Regular', alertaMedica: '' });
+      setEvaluacionDolor(initialData.dolor_detalles || initialData.evaluacionDolor || { escala: 0, caracteristicas: [], desencadenantes: [], evolucion: '' });
+      setExamenEstomatologico(initialData.examen_estomatologico || initialData.examenEstomatologico || { atm: 'Sin alteraciones', labios: 'Sin alteraciones', lengua: 'Sin alteraciones', paladar: 'Sin alteraciones', pisoBoca: 'Sin alteraciones', encias: 'Sin alteraciones', observaciones: '' });
+      setHallazgosOdontograma(initialData.hallazgos_odontograma || initialData.hallazgosOdontograma || []);
+      setDiagnosticosManuales(initialData.diagnosticos_cie10 || initialData.diagnosticos || []);
+      setProcedimientos(initialData.plan_tratamiento || initialData.procedimientos || []);
+      setRecetas(initialData.recetas_prescritas || initialData.recetas || []);
+      if (initialData.consentimiento_informado !== undefined) setConsentimiento(initialData.consentimiento_informado);
+      if (initialData.tiempo_atencion_segundos !== undefined) setTiempo(initialData.tiempo_atencion_segundos || 0);
+      // Cargar estado del odontograma para rehidratación
+      if (initialData.estado_odontograma) {
+        // Si GeneralOdontogram soporta estado, aquí se cargaría
+        console.log('Estado odontograma cargado:', initialData.estado_odontograma);
+      }
+    }
+  }, [initialData]);
 
   // ==========================================================================
   // 3. LÓGICA DE ESTADO DERIVADO Y SEGURIDAD CLÍNICA
@@ -171,7 +194,7 @@ export const GeneralConsultation = ({ onExit }: Props) => {
   }, [procedimientos]);
 
   // ==========================================================================
-  // 4. HANDLERS
+  // 4. HANDLERS & SUPABASE CONNECTION
   // ==========================================================================
 
   useEffect(() => { const timer = setInterval(() => setTiempo(prev => prev + 1), 1000); return () => clearInterval(timer); }, []);
@@ -207,9 +230,62 @@ export const GeneralConsultation = ({ onExit }: Props) => {
     setProcedimientos(prev => prev.map(p => p.id === id ? { ...p, [campo]: valor } : p));
   };
 
-  const handleGuardar = () => {
-    setIsSaved(true);
-    setTimeout(() => { if(window.confirm('Consulta guardada exitosamente. ¿Desea cerrar la sesión clínica?')) onExit(); setIsSaved(false); }, 1000);
+  // 👇 FUNCIÓN GUARDAR CONECTADA A LA BD 👇
+  const handleGuardar = async () => {
+    if (!selectedPatient?.id) return;
+    
+    try {
+      // 🚀 ESTRUCTURA NUEVA - SOLO 6 COLUMNAS PRINCIPALES
+      const sesionData = {
+        paciente_id: selectedPatient.id,
+        tipo_consulta: 'GENERAL',
+        hallazgos_odontograma: hallazgosOdontograma,
+        estado_odontograma: {}, // GeneralOdontogram no mantiene estado interno persistente
+        detalles_clinicos: {
+          motivo: motivo,
+          tags: motivoSeleccionado,
+          examen_fisico: examenEstomatologico,
+          dolor: {
+            escala: evaluacionDolor.escala,
+            detalles: {
+              caracteristicas: evaluacionDolor.caracteristicas,
+              desencadenantes: evaluacionDolor.desencadenantes,
+              evolucion: evaluacionDolor.evolucion
+            }
+          },
+          plan_tratamiento: procedimientos,
+          recetas: recetas,
+          notas: estadoGeneral,
+          diagnosticos_cie10: todosLosDiagnosticos,
+          consentimiento_informado: consentimiento
+        },
+        tiempo_sesion: tiempo
+      };
+
+      if (onSave) {
+        await onSave(sesionData);
+      } else {
+        const { error } = await supabase.from('consultas_odontologicas').insert([sesionData]);
+        if (error) throw error;
+      }
+
+      setIsSaved(true);
+      setMensajeConfirmacion('¡Consulta guardada en la base de datos!');
+      setShowConfirmModal(true);
+      
+      setTimeout(() => { 
+        if(window.confirm('Consulta guardada exitosamente en la nube. ¿Desea finalizar la sesión clínica?')) {
+          onExit();
+        }
+        setIsSaved(false); 
+        setShowConfirmModal(false);
+      }, 1500);
+
+    } catch (err: any) {
+      console.error("Error al guardar consulta:", err);
+      const message = err?.message || err?.error || JSON.stringify(err);
+      alert(`Error crítico al guardar consulta: ${message || 'No se pudo conectar con la base de datos.'}`);
+    }
   };
 
   const toggleArrayItem = (array: string[], setArray: (arr: string[]) => void, item: string) => { array.includes(item) ? setArray(array.filter(i => i !== item)) : setArray([...array, item]); };
@@ -224,7 +300,9 @@ export const GeneralConsultation = ({ onExit }: Props) => {
     setAlertaSeguridadReceta(null);
     if (!medicamentoNuevo.trim()) return true;
 
-    const edadPaciente = selectedPatient?.edad ? parseInt(selectedPatient.edad.toString()) : 30;
+const edadPaciente = selectedPatient?.fecha_nacimiento ?
+      new Date().getFullYear() - new Date(selectedPatient.fecha_nacimiento).getFullYear() : 30;
+
     if (edadPaciente < 12) {
       const isDosisAlta = dosisPropuesta.toLowerCase().includes('500') || dosisPropuesta.toLowerCase().includes('800') || medicamentoNuevo.toLowerCase().includes('500mg');
       const isAdultForm = dosisPropuesta.toLowerCase().includes('tableta') || dosisPropuesta.toLowerCase().includes('capsula');
@@ -235,7 +313,7 @@ export const GeneralConsultation = ({ onExit }: Props) => {
       }
     }
 
-    const alertas = estadoGeneral.alertaMedica.toLowerCase();
+    const alertas = (estadoGeneral.alertaMedica || '').toLowerCase();
     const med = medicamentoNuevo.toLowerCase();
     
     if (alertas) {
@@ -264,43 +342,93 @@ export const GeneralConsultation = ({ onExit }: Props) => {
   const carasDisponibles = esDienteAnterior(nuevoProcedimiento.pieza || '') ? CARAS_ANTERIORES : CARAS_POSTERIORES;
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: COLORS.background, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: COLORS.background, fontFamily: "'Geist', system-ui, sans-serif" }}>
       <style>{`
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulseDot { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
-        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+        .gc, .gc * { font-family: 'Geist', system-ui, sans-serif; box-sizing: border-box; }
         
-        .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 900px) { .grid-2-col { grid-template-columns: 1fr; } }
+        /* Animations */
+        @keyframes gcFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes gcSlideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes gcPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @keyframes gcShake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
         
-        .card { background: white; border-radius: 16px; padding: 24px; border: 1px solid ${COLORS.border}; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.03), 0 4px 6px -2px rgba(0,0,0,0.02); transition: box-shadow 0.3s ease; }
-        .card:hover { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.06), 0 8px 10px -6px rgba(0,0,0,0.02); }
-        .card-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: ${COLORS.text}; margin: 0 0 20px 0; border-bottom: 2px solid ${COLORS.primaryLight}; padding-bottom: 10px; display: inline-flex; }
+        .gc-fade-in { animation: gcFadeIn 0.4s cubic-bezier(.4,0,.2,1) both; }
+        .gc-slide-in { animation: gcSlideIn 0.3s ease both; }
+        .gc-pulse { animation: gcPulse 2s infinite; }
+        .gc-shake { animation: gcShake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 700; color: ${COLORS.textLight}; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.05em; }
-        .input-base, select { width: 100%; padding: 12px 14px; border: 1px solid ${COLORS.border}; border-radius: 10px; font-size: 14px; font-family: inherit; transition: all 0.2s; background: ${COLORS.background}; color: ${COLORS.text}; box-sizing: border-box; }
-        .input-base:focus, select:focus { outline: none; border-color: ${COLORS.primary}; background: white; box-shadow: 0 0 0 4px ${COLORS.primaryLight}; transform: translateY(-1px); }
-        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .gc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .gc-grid-2 { grid-template-columns: 1fr; } }
         
-        .tab-btn { padding: 16px 20px; background: transparent; border: none; border-bottom: 3px solid transparent; font-size: 13px; font-weight: 700; color: ${COLORS.textLight}; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.05em; position: relative; }
-        .tab-btn:hover { color: ${COLORS.primary}; background: linear-gradient(to top, ${COLORS.primaryLight}40, transparent); }
-        .tab-btn.active { color: ${COLORS.primaryDark}; border-bottom-color: ${COLORS.primary}; background: linear-gradient(to top, ${COLORS.primaryLight}80, transparent); }
+        .gc-card { 
+          background: #fff; border: 1px solid ${COLORS.border}; border-radius: 16px; 
+          padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,.05); 
+          transition: all .25s cubic-bezier(.4,0,.2,1); 
+        }
+        .gc-card:hover { box-shadow: 0 8px 25px rgba(0,0,0,.08); transform: translateY(-2px); }
         
-        .btn-primary { display: flex; align-items: center; gap: 6px; padding: 12px 20px; background: ${COLORS.primary}; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0, 164, 228, 0.2); }
-        .btn-primary:hover { background: ${COLORS.primaryDark}; transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0, 164, 228, 0.3); }
+        .gc-card-title { 
+          display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; 
+          color: ${COLORS.text}; margin: 0 0 20px 0; border-bottom: 2px solid ${COLORS.primaryLight}; 
+          padding-bottom: 10px; 
+        }
         
-        .btn-badge { padding: 6px 14px; background: white; border: 1px solid ${COLORS.border}; border-radius: 20px; font-size: 12px; font-weight: 600; color: ${COLORS.text}; cursor: pointer; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .btn-badge:hover { border-color: ${COLORS.primary}; color: ${COLORS.primaryDark}; background: ${COLORS.primaryLight}; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,164,228,0.1); }
+        .gc-form-group { margin-bottom: 16px; }
+        .gc-label { 
+          display: block; font-size: 11px; font-weight: 700; color: ${COLORS.textLight}; 
+          text-transform: uppercase; margin-bottom: 6px; letter-spacing: .08em; 
+        }
+        .gc-input, .gc-select { 
+          width: 100%; padding: 12px 14px; border: 1px solid ${COLORS.border}; 
+          border-radius: 10px; font-size: 14px; font-family: inherit; 
+          transition: all .2s cubic-bezier(.4,0,.2,1); background: ${COLORS.surface}; 
+          color: ${COLORS.text}; box-sizing: border-box; 
+        }
+        .gc-input:focus, .gc-select:focus { 
+          outline: none; border-color: ${COLORS.primary}; background: #fff; 
+          box-shadow: 0 0 0 3px ${COLORS.primaryLight}; transform: translateY(-1px); 
+        }
+        
+        .gc-tab-btn { 
+          padding: 16px 20px; background: transparent; border: none; 
+          border-bottom: 3px solid transparent; font-size: 12px; font-weight: 700; 
+          color: ${COLORS.textLight}; cursor: pointer; transition: all .25s ease; 
+          display: flex; align-items: center; gap: 8px; text-transform: uppercase; 
+          letter-spacing: .08em; position: relative; 
+        }
+        .gc-tab-btn:hover { color: ${COLORS.primary}; background: linear-gradient(to top, ${COLORS.primaryLight}40, transparent); }
+        .gc-tab-btn.active { color: ${COLORS.primary}; border-bottom-color: ${COLORS.primary}; background: linear-gradient(to top, ${COLORS.primaryLight}80, transparent); }
+        
+        .gc-btn-primary { 
+          display: flex; align-items: center; gap: 6px; padding: 12px 20px; 
+          background: ${COLORS.primary}; color: #fff; border: none; border-radius: 10px; 
+          font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s cubic-bezier(.34,1.56,.64,1); 
+          box-shadow: 0 4px 12px rgba(0,113,227,.25); 
+        }
+        .gc-btn-primary:hover { background: ${COLORS.primaryDark}; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,113,227,.35); }
+        
+        .gc-btn-badge { 
+          padding: 6px 14px; background: #fff; border: 1px solid ${COLORS.border}; 
+          border-radius: 20px; font-size: 12px; font-weight: 600; color: ${COLORS.text}; 
+          cursor: pointer; white-space: nowrap; transition: all .2s cubic-bezier(.4,0,.2,1); 
+          display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,.03); 
+        }
+        .gc-btn-badge:hover { border-color: ${COLORS.primary}; color: ${COLORS.primary}; background: ${COLORS.primaryLight}; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,113,227,.15); }
+        
+        .gc-alert { 
+          padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; gap: 8px; 
+          font-size: 13px; font-weight: 600; margin-bottom: 16px; 
+        }
+        .gc-alert.error { background: ${COLORS.errorLight}; color: ${COLORS.error}; border: 1px solid rgba(239,68,68,.2); }
+        .gc-alert.success { background: ${COLORS.successLight}; color: ${COLORS.success}; border: 1px solid rgba(16,185,129,.2); }
+        .gc-alert.warning { background: ${COLORS.warningLight}; color: ${COLORS.warning}; border: 1px solid rgba(245,158,11,.2); }
       `}</style>
 
       {/* HEADER PREMIUM */}
-      <header className="no-print" style={{ background: '#ffffff', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 100, position: 'sticky', top: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', borderBottom: `1px solid ${COLORS.border}` }}>
+      <header className="no-print gc-fade-in" style={{ background: '#ffffff', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 100, position: 'sticky', top: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           
-          {/* NUEVO BOTÓN CANCELAR */}
           <button 
             onClick={() => setShowCancelModal(true)} 
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px', color: COLORS.textLight, cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600, fontSize: '13px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }} 
@@ -322,9 +450,9 @@ export const GeneralConsultation = ({ onExit }: Props) => {
               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: COLORS.textLight }}><Hash size={12} /> {selectedPatient.cc || 'N/A'}</span>
                 <span style={{ color: COLORS.border }}>•</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: COLORS.textLight }}><User size={12} /> {selectedPatient.edad} años</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: COLORS.textLight }}><User size={12} /> {selectedPatient.edad || '--'} años</span>
                 <span style={{ color: COLORS.border }}>•</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: COLORS.primaryDark }}><FileSignature size={12} /> HC: #{selectedPatient.id}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: COLORS.primaryDark }}><FileSignature size={12} /> HC: #{selectedPatient.id?.slice(0,8)}</span>
               </div>
             </div>
           </div>
@@ -339,7 +467,7 @@ export const GeneralConsultation = ({ onExit }: Props) => {
             </div>
           </div>
           
-          <button className="btn-primary" onClick={handleGuardar} style={{ background: isSaved ? COLORS.success : COLORS.primary, padding: '14px 28px', borderRadius: '12px', fontSize: '14px' }}>
+          <button className="gc-btn-primary" onClick={handleGuardar} style={{ background: isSaved ? COLORS.success : COLORS.primary, padding: '14px 28px', borderRadius: '12px', fontSize: '14px' }}>
             {isSaved ? <CheckCircle size={18} /> : <Save size={18} />} {isSaved ? 'Guardado Exitoso' : 'Guardar Sesión'}
           </button>
         </div>
@@ -347,11 +475,11 @@ export const GeneralConsultation = ({ onExit }: Props) => {
 
       {/* BARRA DE NAVEGACIÓN */}
       <div className="no-print" style={{ background: 'white', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', padding: '0 32px', overflowX: 'auto', gap: '4px' }}>
-        <button className={`tab-btn ${activeTab === 'anamnesis' ? 'active' : ''}`} onClick={() => setActiveTab('anamnesis')}><ClipboardList size={16} /> Anamnesis & Triage</button>
-        <button className={`tab-btn ${activeTab === 'odontograma' ? 'active' : ''}`} onClick={() => setActiveTab('odontograma')}><Scan size={16} /> Odontograma {hallazgosOdontograma.length > 0 && <span style={{ marginLeft: '5px', background: COLORS.primary, color: 'white', borderRadius: '12px', padding: '2px 8px', fontSize: '10px' }}>{hallazgosOdontograma.length}</span>}</button>
-        <button className={`tab-btn ${activeTab === 'examen' ? 'active' : ''}`} onClick={() => setActiveTab('examen')}><Stethoscope size={16} /> Examen & Diagnóstico</button>
-        <button className={`tab-btn ${activeTab === 'procedimientos' ? 'active' : ''}`} onClick={() => setActiveTab('procedimientos')}><Scissors size={16} /> Procedimientos & Cotización {procedimientosSugeridos.length > 0 && <span style={{ marginLeft: '5px', background: COLORS.warning, color: 'white', borderRadius: '12px', padding: '2px 8px', fontSize: '10px' }}>{procedimientosSugeridos.length}</span>}</button>
-        <button className={`tab-btn ${activeTab === 'recetas' ? 'active' : ''}`} onClick={() => setActiveTab('recetas')}><Pill size={16} /> Recetas</button>
+        <button className={`gc-tab-btn ${activeTab === 'anamnesis' ? 'active' : ''}`} onClick={() => setActiveTab('anamnesis')}><ClipboardList size={16} /> Anamnesis & Triage</button>
+        <button className={`gc-tab-btn ${activeTab === 'odontograma' ? 'active' : ''}`} onClick={() => setActiveTab('odontograma')}><Scan size={16} /> Odontograma {hallazgosOdontograma.length > 0 && <span style={{ marginLeft: '5px', background: COLORS.primary, color: 'white', borderRadius: '12px', padding: '2px 8px', fontSize: '10px' }}>{hallazgosOdontograma.length}</span>}</button>
+        <button className={`gc-tab-btn ${activeTab === 'examen' ? 'active' : ''}`} onClick={() => setActiveTab('examen')}><Stethoscope size={16} /> Examen & Diagnóstico</button>
+        <button className={`gc-tab-btn ${activeTab === 'procedimientos' ? 'active' : ''}`} onClick={() => setActiveTab('procedimientos')}><Scissors size={16} /> Procedimientos & Cotización {procedimientosSugeridos.length > 0 && <span style={{ marginLeft: '5px', background: COLORS.warning, color: 'white', borderRadius: '12px', padding: '2px 8px', fontSize: '10px' }}>{procedimientosSugeridos.length}</span>}</button>
+        <button className={`gc-tab-btn ${activeTab === 'recetas' ? 'active' : ''}`} onClick={() => setActiveTab('recetas')}><Pill size={16} /> Recetas</button>
       </div>
 
       {/* ÁREA DE TRABAJO */}
@@ -361,32 +489,32 @@ export const GeneralConsultation = ({ onExit }: Props) => {
           {/* TAB 1: ANAMNESIS */}
           <div style={{ display: activeTab === 'anamnesis' ? 'block' : 'none' }}>
             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div className="card">
-                <h3 className="card-title" style={{ color: COLORS.primaryDark }}><Activity size={20} /> Condición General en Consulta</h3>
+              <div className="gc-card gc-fade-in">
+                <h3 className="gc-card-title" style={{ color: COLORS.primaryDark }}><Activity size={20} /> Condición General en Consulta</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-                  <div className="form-group">
+                  <div className="gc-form-group">
                     <label>Actitud del Paciente</label>
-                    <select className="input-base" value={estadoGeneral.actitud} onChange={e => setEstadoGeneral({...estadoGeneral, actitud: e.target.value})}>
+                    <select className="gc-input" value={estadoGeneral.actitud} onChange={e => setEstadoGeneral({...estadoGeneral, actitud: e.target.value})}>
                       <option value="Colaborador">Colaborador / Tranquilo</option>
                       <option value="Ansioso">Ansioso / Temeroso</option>
                       <option value="Poco colaborador">Poco colaborador</option>
                       <option value="Dolor agudo">Con dolor agudo</option>
                     </select>
                   </div>
-                  <div className="form-group">
+                  <div className="gc-form-group">
                     <label>Higiene Oral Observada</label>
-                    <select className="input-base" value={estadoGeneral.higieneOral} onChange={e => setEstadoGeneral({...estadoGeneral, higieneOral: e.target.value})}>
+                    <select className="gc-input" value={estadoGeneral.higieneOral} onChange={e => setEstadoGeneral({...estadoGeneral, higieneOral: e.target.value})}>
                       <option value="Buena">Buena (Sin placa evidente)</option>
                       <option value="Regular">Regular (Placa localizada)</option>
                       <option value="Mala">Mala (Placa generalizada / Cálculo)</option>
                     </select>
                   </div>
-                  <div className="form-group">
+                  <div className="gc-form-group">
                     <label style={{ color: estadoGeneral.alertaMedica ? COLORS.error : COLORS.textLight }}>Alerta / Riesgo Médico Rápido</label>
                     <div style={{ position: 'relative' }}>
                       <input 
                         type="text" 
-                        className="input-base" 
+                        className="gc-input" 
                         placeholder="Ej. Alérgico a penicilina, Asmático..." 
                         value={estadoGeneral.alertaMedica} 
                         onChange={e => {
@@ -407,21 +535,21 @@ export const GeneralConsultation = ({ onExit }: Props) => {
                 </div>
               </div>
 
-              <div className="grid-2-col">
-                <div className="card">
-                  <h3 className="card-title"><ClipboardList size={18} /> Motivo de Consulta de Hoy</h3>
+              <div className="gc-grid-2">
+                <div className="gc-card">
+                  <h3 className="gc-card-title"><ClipboardList size={18} /> Motivo de Consulta de Hoy</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
                     {[ { id: 'dolor', label: 'Dolor / Molestia', icon: AlertTriangle }, { id: 'control', label: 'Control Rutina', icon: CheckCircle }, { id: 'estetica', label: 'Estética', icon: Eye }, { id: 'trauma', label: 'Traumatismo', icon: Zap }, { id: 'protesis', label: 'Problema Prótesis', icon: Bone } ].map(btn => {
                       const isSelected = motivoSeleccionado.includes(btn.id); const Icon = btn.icon;
                       return ( <button key={btn.id} onClick={() => toggleArrayItem(motivoSeleccionado, setMotivoSeleccionado, btn.id)} style={{ padding: '8px 14px', background: isSelected ? COLORS.primary : COLORS.background, color: isSelected ? 'white' : COLORS.text, border: `1px solid ${isSelected ? COLORS.primary : COLORS.border}`, borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all 0.2s' }}> <Icon size={14} /> {btn.label} </button> )
                     })}
                   </div>
-                  <div className="form-group"><label>Relato del Paciente</label><textarea rows={3} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ej. Sensibilidad al frío..." className="input-base" /></div>
-                  <div className="form-group" style={{ marginBottom: 0 }}><label>Evolución clínica</label><textarea rows={2} value={evaluacionDolor.evolucion} onChange={e => setEvaluacionDolor({...evaluacionDolor, evolucion: e.target.value})} placeholder="Ej. Inició hace 3 días..." className="input-base" /></div>
+                  <div className="gc-form-group"><label>Relato del Paciente</label><textarea rows={3} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ej. Sensibilidad al frío..." className="gc-input" /></div>
+                  <div className="gc-form-group" style={{ marginBottom: 0 }}><label>Evolución clínica</label><textarea rows={2} value={evaluacionDolor.evolucion} onChange={e => setEvaluacionDolor({...evaluacionDolor, evolucion: e.target.value})} placeholder="Ej. Inició hace 3 días..." className="gc-input" /></div>
                 </div>
 
-                <div className="card">
-                  <h3 className="card-title" style={{ color: evaluacionDolor.escala > 6 ? COLORS.error : COLORS.text }}><Activity size={18} /> Escala y Análisis del Dolor</h3>
+                <div className="gc-card">
+                  <h3 className="gc-card-title" style={{ color: evaluacionDolor.escala > 6 ? COLORS.error : COLORS.text }}><Activity size={18} /> Escala y Análisis del Dolor</h3>
                   <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}><label style={{ fontSize: '12px', fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', margin: 0 }}>Intensidad (0-10)</label><span style={{ fontSize: '13px', fontWeight: 800, color: evaluacionDolor.escala > 7 ? COLORS.error : evaluacionDolor.escala > 3 ? COLORS.warning : COLORS.success }}>{evaluacionDolor.escala === 0 ? 'Sin Dolor' : evaluacionDolor.escala <= 3 ? 'Leve' : evaluacionDolor.escala <= 7 ? 'Moderado' : 'Severo'}</span></div>
                     <div style={{ display: 'flex', gap: '4px', width: '100%' }}>
@@ -467,26 +595,26 @@ export const GeneralConsultation = ({ onExit }: Props) => {
           {/* TAB 3: EXAMEN Y DIAGNÓSTICO */}
           <div style={{ display: activeTab === 'examen' ? 'block' : 'none' }}>
             <div className="fade-in grid-2-col">
-              <div className="card">
-                <h3 className="card-title"><Microscope size={18} /> Examen Estomatológico (Tejidos Blandos y ATM)</h3>
-                <div className="form-group"><label>Articulación Temporomandibular (ATM)</label><select className="input-base" value={examenEstomatologico.atm} onChange={e => setExamenEstomatologico({...examenEstomatologico, atm: e.target.value})}><option value="Sin alteraciones">Sin alteraciones aparentes</option><option value="Chasquido articular">Chasquido articular</option><option value="Dolor a la palpacion">Dolor a la palpación</option><option value="Apertura limitada">Apertura limitada (&lt;40mm)</option><option value="Desviacion">Desviación en apertura/cierre</option></select></div>
+              <div className="gc-card">
+                <h3 className="gc-card-title"><Microscope size={18} /> Examen Estomatológico (Tejidos Blandos y ATM)</h3>
+                <div className="gc-form-group"><label>Articulación Temporomandibular (ATM)</label><select className="gc-input" value={examenEstomatologico.atm} onChange={e => setExamenEstomatologico({...examenEstomatologico, atm: e.target.value})}><option value="Sin alteraciones">Sin alteraciones aparentes</option><option value="Chasquido articular">Chasquido articular</option><option value="Dolor a la palpacion">Dolor a la palpación</option><option value="Apertura limitada">Apertura limitada (&lt;40mm)</option><option value="Desviacion">Desviación en apertura/cierre</option></select></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div className="form-group"><label>Labios</label><select className="input-base" value={examenEstomatologico.labios} onChange={e => setExamenEstomatologico({...examenEstomatologico, labios: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Resequedad / Fisuras">Resequedad / Fisuras</option><option value="Lesion ulcerosa">Lesión ulcerosa</option><option value="Aumento de volumen">Aumento de volumen</option></select></div>
-                  <div className="form-group"><label>Carrillos / Mucosa Yugal</label><select className="input-base" value={examenEstomatologico.carrillos} onChange={e => setExamenEstomatologico({...examenEstomatologico, carrillos: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Linea alba prominente">Línea alba prominente</option><option value="Mordisqueo">Mordisqueo</option><option value="Eritema">Eritema / Inflamación</option></select></div>
-                  <div className="form-group"><label>Lengua</label><select className="input-base" value={examenEstomatologico.lengua} onChange={e => setExamenEstomatologico({...examenEstomatologico, lengua: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Saburral">Saburral</option><option value="Fisurada">Fisurada</option><option value="Geografica">Geográfica</option></select></div>
-                  <div className="form-group"><label>Paladar</label><select className="input-base" value={examenEstomatologico.paladar} onChange={e => setExamenEstomatologico({...examenEstomatologico, paladar: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Torus palatino">Torus palatino</option><option value="Estomatitis">Estomatitis protésica</option></select></div>
+                  <div className="gc-form-group"><label>Labios</label><select className="gc-input" value={examenEstomatologico.labios} onChange={e => setExamenEstomatologico({...examenEstomatologico, labios: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Resequedad / Fisuras">Resequedad / Fisuras</option><option value="Lesion ulcerosa">Lesión ulcerosa</option><option value="Aumento de volumen">Aumento de volumen</option></select></div>
+                  <div className="gc-form-group"><label>Carrillos / Mucosa Yugal</label><select className="gc-input" value={examenEstomatologico.carrillos} onChange={e => setExamenEstomatologico({...examenEstomatologico, carrillos: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Linea alba prominente">Línea alba prominente</option><option value="Mordisqueo">Mordisqueo</option><option value="Eritema">Eritema / Inflamación</option></select></div>
+                  <div className="gc-form-group"><label>Lengua</label><select className="gc-input" value={examenEstomatologico.lengua} onChange={e => setExamenEstomatologico({...examenEstomatologico, lengua: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Saburral">Saburral</option><option value="Fisurada">Fisurada</option><option value="Geografica">Geográfica</option></select></div>
+                  <div className="gc-form-group"><label>Paladar</label><select className="gc-input" value={examenEstomatologico.paladar} onChange={e => setExamenEstomatologico({...examenEstomatologico, paladar: e.target.value})}><option value="Sin alteraciones">Sin alteraciones</option><option value="Torus palatino">Torus palatino</option><option value="Estomatitis">Estomatitis protésica</option></select></div>
                 </div>
-                <div className="form-group"><label>Piso de boca y Encías</label><select className="input-base" value={examenEstomatologico.encias} onChange={e => setExamenEstomatologico({...examenEstomatologico, encias: e.target.value})}><option value="Sin alteraciones">Sin alteraciones (Rosa coral, firme)</option><option value="Gingivitis leve">Gingivitis leve (Eritema marginal)</option><option value="Gingivitis severa">Gingivitis severa (Sangrado espontáneo)</option><option value="Retraccion gingival">Retracción gingival localizada/general</option><option value="Torus mandibular">Torus mandibular</option></select></div>
-                <div className="form-group" style={{ marginBottom: 0 }}><label>Hallazgos adicionales</label><textarea rows={2} value={examenEstomatologico.observaciones} onChange={e => setExamenEstomatologico({...examenEstomatologico, observaciones: e.target.value})} placeholder="Ej. Se observa lesión blanquecina no desprendible..." className="input-base" /></div>
+                <div className="gc-form-group"><label>Piso de boca y Encías</label><select className="gc-input" value={examenEstomatologico.encias} onChange={e => setExamenEstomatologico({...examenEstomatologico, encias: e.target.value})}><option value="Sin alteraciones">Sin alteraciones (Rosa coral, firme)</option><option value="Gingivitis leve">Gingivitis leve (Eritema marginal)</option><option value="Gingivitis severa">Gingivitis severa (Sangrado espontáneo)</option><option value="Retraccion gingival">Retracción gingival localizada/general</option><option value="Torus mandibular">Torus mandibular</option></select></div>
+                <div className="gc-form-group" style={{ marginBottom: 0 }}><label>Hallazgos adicionales</label><textarea rows={2} value={examenEstomatologico.observaciones} onChange={e => setExamenEstomatologico({...examenEstomatologico, observaciones: e.target.value})} placeholder="Ej. Se observa lesión blanquecina no desprendible..." className="gc-input" /></div>
               </div>
 
-              <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-                <h3 className="card-title"><BookOpen size={18} /> Impresión Diagnóstica y CIE-10</h3>
+              <div className="gc-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <h3 className="gc-card-title"><BookOpen size={18} /> Impresión Diagnóstica y CIE-10</h3>
                 <div style={{ marginBottom: '20px', background: COLORS.background, padding: '16px', borderRadius: '12px', border: `1px solid ${COLORS.border}` }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>Agregar Diagnóstico Manual</label>
                   <div style={{ position: 'relative' }}>
                     <Search size={18} color={COLORS.textLight} style={{ position: 'absolute', left: '12px', top: '12px' }} />
-                    <input type="text" className="input-base" placeholder="Buscar código o enfermedad..." style={{ paddingLeft: '40px' }} value={busquedaCie10} onChange={(e) => setBusquedaCie10(e.target.value)} />
+                    <input type="text" className="gc-input" placeholder="Buscar código o enfermedad..." style={{ paddingLeft: '40px' }} value={busquedaCie10} onChange={(e) => setBusquedaCie10(e.target.value)} />
                     {resultadosCie10.length > 0 && (
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '12px', marginTop: '8px', zIndex: 10, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto', overflowX: 'hidden' }}>
                         {resultadosCie10.map(cie => (
@@ -520,12 +648,12 @@ export const GeneralConsultation = ({ onExit }: Props) => {
 
           {/* TAB 4: PROCEDIMIENTOS Y PRESUPUESTO */}
           <div style={{ display: activeTab === 'procedimientos' ? 'block' : 'none' }}>
-            <div className="fade-in card">
+            <div className="gc-fade-in gc-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h3 className="card-title" style={{ margin: 0, border: 'none', padding: 0 }}><Scissors size={20} /> Plan de Tratamiento & Presupuesto</h3>
+                <h3 className="gc-card-title" style={{ margin: 0, border: 'none', padding: 0 }}><Scissors size={20} /> Plan de Tratamiento & Presupuesto</h3>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', background: consentimiento ? COLORS.successLight : COLORS.warningLight, color: consentimiento ? COLORS.success : COLORS.warning, padding: '10px 18px', borderRadius: '24px', cursor: 'pointer', transition: 'all 0.3s', fontWeight: 700 }}>
                   <input type="checkbox" checked={consentimiento} onChange={e => setConsentimiento(e.target.checked)} style={{ accentColor: COLORS.success, width: '18px', height: '18px' }} />
-                  <FileText size={18} /> Consentimiento Informado Firmado
+                  <FileSignature size={18} /> Consentimiento Informado Firmado
                 </label>
               </div>
 
@@ -542,23 +670,19 @@ export const GeneralConsultation = ({ onExit }: Props) => {
 
               {procedimientosSugeridos.length > 0 && (
                 <div style={{ background: COLORS.infoLight, border: `1px solid ${COLORS.info}`, borderRadius: '12px', padding: '16px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: COLORS.infoDark, fontWeight: 700, fontSize: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: COLORS.info, fontWeight: 700, fontSize: '14px' }}>
                     <Info size={20} /> Inteligencia Clínica: {procedimientosSugeridos.length} revisiones sugeridas por el Odontograma
                   </div>
                   <button onClick={aceptarSugerencias} style={{ padding: '8px 16px', background: COLORS.info, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}><Plus size={16} /> Importar Todos</button>
                 </div>
               )}
 
-              {/* INPUTS DE PROCEDIMIENTOS CON VALIDACIÓN ANATÓMICA FDI */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr 1fr 1fr auto', gap: '12px', background: COLORS.background, padding: '20px', borderRadius: '16px', marginBottom: '24px', border: `1px solid ${COLORS.border}`, alignItems: 'end' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}><label>Procedimiento</label><input className="input-base" type="text" placeholder="Ej. Limpieza" value={nuevoProcedimiento.nombre} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, nombre: e.target.value})} /></div>
+                <div className="gc-form-group" style={{ marginBottom: 0 }}><label>Procedimiento</label><input className="gc-input" type="text" placeholder="Ej. Limpieza" value={nuevoProcedimiento.nombre} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, nombre: e.target.value})} /></div>
                 
-                <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="gc-form-group" style={{ marginBottom: 0 }}>
                   <label>Pieza (FDI)</label>
-                  <select className="input-base" value={nuevoProcedimiento.pieza} onChange={e => {
-                      const nuevaPieza = e.target.value;
-                      setNuevoProcedimiento({...nuevoProcedimiento, pieza: nuevaPieza, cara: ''});
-                    }}>
+                  <select className="gc-input" value={nuevoProcedimiento.pieza} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, pieza: e.target.value, cara: ''})}>
                     <option value="">General / N/A</option>
                     <optgroup label="Adultos">
                       {FDI_ADULTOS.map(p => <option key={`ad-${p}`} value={p}>{p}</option>)}
@@ -569,26 +693,26 @@ export const GeneralConsultation = ({ onExit }: Props) => {
                   </select>
                 </div>
 
-                <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="gc-form-group" style={{ marginBottom: 0 }}>
                   <label>Cara Anatómica</label>
-                  <select className="input-base" value={nuevoProcedimiento.cara} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, cara: e.target.value})}>
+                  <select className="gc-input" value={nuevoProcedimiento.cara} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, cara: e.target.value})}>
                     <option value="">Seleccionar...</option>
                     {carasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
 
-                <div className="form-group" style={{ marginBottom: 0 }}><label>Observaciones</label><input className="input-base" type="text" placeholder="Detalles..." value={nuevoProcedimiento.observaciones} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, observaciones: e.target.value})} /></div>
+                <div className="gc-form-group" style={{ marginBottom: 0 }}><label>Observaciones</label><input className="gc-input" type="text" placeholder="Detalles..." value={nuevoProcedimiento.observaciones} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, observaciones: e.target.value})} /></div>
                 
-                <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="gc-form-group" style={{ marginBottom: 0 }}>
                   <label>Estado</label>
-                  <select className="input-base" value={nuevoProcedimiento.estado} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, estado: e.target.value as any})}>
+                  <select className="gc-input" value={nuevoProcedimiento.estado} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, estado: e.target.value as any})}>
                     <option value="sugerido">Sugerido</option><option value="presupuestado">Presupuestado</option><option value="aprobado">Aprobado</option><option value="realizado">Realizado Hoy</option>
                   </select>
                 </div>
                 
-                <div className="form-group" style={{ marginBottom: 0 }}><label>Costo ($)</label><input className="input-base" type="number" min="0" placeholder="0" value={nuevoProcedimiento.costo || ''} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, costo: Math.max(0, Number(e.target.value))})} /></div>
+                <div className="gc-form-group" style={{ marginBottom: 0 }}><label>Costo ($)</label><input className="gc-input" type="number" min="0" placeholder="0" value={nuevoProcedimiento.costo || ''} onChange={e => setNuevoProcedimiento({...nuevoProcedimiento, costo: Math.max(0, Number(e.target.value))})} /></div>
                 
-                <button className="btn-primary" style={{ height: '44px', padding: '0 24px' }} onClick={() => {
+                <button className="gc-btn-primary" style={{ height: '44px', padding: '0 24px' }} onClick={() => {
                   if(nuevoProcedimiento.nombre && nuevoProcedimiento.nombre.trim() !== '') {
                     setProcedimientos([{ ...nuevoProcedimiento, id: `proc-man-${Date.now()}`, fecha: new Date().toLocaleDateString() } as Procedimiento, ...procedimientos]);
                     setNuevoProcedimiento({ nombre: '', pieza: '', cara: '', observaciones: '', costo: 0, estado: 'aprobado' });
@@ -645,11 +769,11 @@ export const GeneralConsultation = ({ onExit }: Props) => {
             </div>
           </div>
 
-          {/* TAB 5: RECETAS CON VIGILANTE DE SEGURIDAD */}
+          {/* TAB 5: RECETAS */}
           <div style={{ display: activeTab === 'recetas' ? 'block' : 'none' }}>
             <div className="fade-in grid-2-col">
-              <div className="card">
-                <h3 className="card-title"><Pill size={18} /> Nueva Prescripción</h3>
+              <div className="gc-card">
+                <h3 className="gc-card-title"><Pill size={18} /> Nueva Prescripción</h3>
                 
                 {alertaSeguridadReceta && (
                   <div className="shake" style={{ background: COLORS.errorLight, color: COLORS.error, padding: '16px', borderRadius: '12px', border: `1px solid ${COLORS.error}`, marginBottom: '20px', display: 'flex', alignItems: 'flex-start', gap: '12px', fontSize: '14px', fontWeight: 700 }}>
@@ -661,30 +785,30 @@ export const GeneralConsultation = ({ onExit }: Props) => {
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: COLORS.textLight }}>Vademécum Rápido</label>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', padding: '10px 0' }}>
-                    <button className="btn-badge" onClick={() => { setNuevaReceta({ medicamento: 'Amoxicilina 500mg', dosis: '1 cápsula', frecuencia: 'Cada 8h', duracion: '7 días', indicaciones: 'Tomar después de comidas' }); verificarSeguridadReceta('Amoxicilina 500mg', '1 cápsula'); }}>Amoxicilina</button>
-                    <button className="btn-badge" onClick={() => { setNuevaReceta({ medicamento: 'Ibuprofeno 400mg', dosis: '1 tableta', frecuencia: 'Cada 8h', duracion: '3 días', indicaciones: 'Con alimentos' }); verificarSeguridadReceta('Ibuprofeno 400mg', '1 tableta'); }}>Ibuprofeno</button>
-                    <button className="btn-badge" onClick={() => { setNuevaReceta({ medicamento: 'Clindamicina 300mg', dosis: '1 cápsula', frecuencia: 'Cada 8h', duracion: '7 días', indicaciones: 'Con abundante agua' }); verificarSeguridadReceta('Clindamicina 300mg', '1 cápsula'); }}>Clindamicina</button>
+                    <button className="gc-btn-badge" onClick={() => { setNuevaReceta({ medicamento: 'Amoxicilina 500mg', dosis: '1 cápsula', frecuencia: 'Cada 8h', duracion: '7 días', indicaciones: 'Tomar después de comidas' }); verificarSeguridadReceta('Amoxicilina 500mg', '1 cápsula'); }}>Amoxicilina</button>
+                    <button className="gc-btn-badge" onClick={() => { setNuevaReceta({ medicamento: 'Ibuprofeno 400mg', dosis: '1 tableta', frecuencia: 'Cada 8h', duracion: '3 días', indicaciones: 'Con alimentos' }); verificarSeguridadReceta('Ibuprofeno 400mg', '1 tableta'); }}>Ibuprofeno</button>
+                    <button className="gc-btn-badge" onClick={() => { setNuevaReceta({ medicamento: 'Clindamicina 300mg', dosis: '1 cápsula', frecuencia: 'Cada 8h', duracion: '7 días', indicaciones: 'Con abundante agua' }); verificarSeguridadReceta('Clindamicina 300mg', '1 cápsula'); }}>Clindamicina</button>
                   </div>
                 </div>
                 
-                <div className="form-group"><input type="text" className="input-base" placeholder="Medicamento" value={nuevaReceta.medicamento} onChange={e => { setNuevaReceta({...nuevaReceta, medicamento: e.target.value}); setAlertaSeguridadReceta(null); }} /></div>
+                <div className="gc-form-group"><input type="text" className="gc-input" placeholder="Medicamento" value={nuevaReceta.medicamento} onChange={e => { setNuevaReceta({...nuevaReceta, medicamento: e.target.value}); setAlertaSeguridadReceta(null); }} /></div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                  <input type="text" className="input-base" placeholder="Dosis" value={nuevaReceta.dosis} onChange={e => { setNuevaReceta({...nuevaReceta, dosis: e.target.value}); setAlertaSeguridadReceta(null); }} />
-                  <input type="text" className="input-base" placeholder="Frecuencia" value={nuevaReceta.frecuencia} onChange={e => setNuevaReceta({...nuevaReceta, frecuencia: e.target.value})} />
-                  <input type="text" className="input-base" placeholder="Duración" value={nuevaReceta.duracion} onChange={e => setNuevaReceta({...nuevaReceta, duracion: e.target.value})} />
+                  <input type="text" className="gc-input" placeholder="Dosis" value={nuevaReceta.dosis} onChange={e => { setNuevaReceta({...nuevaReceta, dosis: e.target.value}); setAlertaSeguridadReceta(null); }} />
+                  <input type="text" className="gc-input" placeholder="Frecuencia" value={nuevaReceta.frecuencia} onChange={e => setNuevaReceta({...nuevaReceta, frecuencia: e.target.value})} />
+                  <input type="text" className="gc-input" placeholder="Duración" value={nuevaReceta.duracion} onChange={e => setNuevaReceta({...nuevaReceta, duracion: e.target.value})} />
                 </div>
                 
-                <div className="form-group"><textarea rows={2} className="input-base" placeholder="Indicaciones adicionales" value={nuevaReceta.indicaciones} onChange={e => setNuevaReceta({...nuevaReceta, indicaciones: e.target.value})} /></div>
+                <div className="gc-form-group"><textarea rows={2} className="gc-input" placeholder="Indicaciones adicionales" value={nuevaReceta.indicaciones} onChange={e => setNuevaReceta({...nuevaReceta, indicaciones: e.target.value})} /></div>
                 
-                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} onClick={handleAgregarReceta}>
+                <button className="gc-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px' }} onClick={handleAgregarReceta}>
                   <Plus size={18} /> Agregar a la Receta
                 </button>
               </div>
 
-              <div className="card">
+              <div className="gc-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 className="card-title" style={{ margin: 0 }}><Printer size={18} /> Receta Actual</h3>
+                  <h3 className="gc-card-title" style={{ margin: 0 }}><Printer size={18} /> Receta Actual</h3>
                 </div>
                 <div style={{ background: '#fffbeb', borderRadius: '12px', padding: '24px', minHeight: '200px', border: '1px solid #fde68a' }}>
                   {recetas.map((r, i) => (
@@ -706,7 +830,7 @@ export const GeneralConsultation = ({ onExit }: Props) => {
         </div>
       </div>
 
-      {/* MODAL MIGRACIÓN ODONTOGRAMA CON BACKDROP BLUR */}
+      {/* MODAL MIGRACIÓN */}
       {showMigracionModal && (
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="fade-in" style={{ background: 'white', borderRadius: '20px', width: '650px', maxWidth: '90%', maxHeight: '80vh', overflow: 'auto', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
@@ -714,7 +838,7 @@ export const GeneralConsultation = ({ onExit }: Props) => {
             <p style={{ fontSize: '15px', color: COLORS.textLight, marginBottom: '24px' }}>El sistema ha analizado sus trazos en el odontograma y sugiere el siguiente plan de acción:</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div style={{ background: COLORS.infoLight, padding: '20px', borderRadius: '12px', border: `1px solid ${COLORS.info}` }}>
-                <h3 style={{ fontSize: '15px', margin: '0 0 12px 0', color: COLORS.infoDark, fontWeight: 800 }}>{diagnosticosOdontograma.length} Diagnósticos derivados</h3>
+                <h3 style={{ fontSize: '15px', margin: '0 0 12px 0', color: COLORS.info, fontWeight: 800 }}>{diagnosticosOdontograma.length} Diagnósticos derivados</h3>
                 <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '14px', color: COLORS.text, fontWeight: 500 }}>{diagnosticosOdontograma.map(d => <li key={d.id} style={{marginBottom: '6px'}}><strong>{d.codigo}</strong> - Pieza #{d.diente}</li>)}</ul>
               </div>
               <div style={{ background: COLORS.warningLight, padding: '20px', borderRadius: '12px', border: `1px solid ${COLORS.warning}` }}>
@@ -727,7 +851,7 @@ export const GeneralConsultation = ({ onExit }: Props) => {
         </div>
       )}
 
-      {/* NUEVO MODAL DE CONFIRMACIÓN DE CANCELACIÓN (SALIDA SEGURA) */}
+      {/* MODAL CANCELAR */}
       {showCancelModal && (
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="fade-in" style={{ background: 'white', borderRadius: '20px', width: '420px', maxWidth: '90%', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
@@ -735,36 +859,18 @@ export const GeneralConsultation = ({ onExit }: Props) => {
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: COLORS.errorLight, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.error }}>
                 <AlertTriangle size={24} />
               </div>
-              <div>
-                <h2 style={{ margin: 0, color: COLORS.text, fontSize: '20px', fontWeight: 800 }}>¿Cancelar consulta?</h2>
-              </div>
+              <div><h2 style={{ margin: 0, color: COLORS.text, fontSize: '20px', fontWeight: 800 }}>¿Cancelar consulta?</h2></div>
             </div>
-            <p style={{ fontSize: '15px', color: COLORS.textLight, marginBottom: '28px', lineHeight: 1.5, fontWeight: 500 }}>
-              Estás a punto de salir. Los cambios no guardados se perderán. ¿Estás seguro de que deseas abandonar esta sesión clínica?
-            </p>
+            <p style={{ fontSize: '15px', color: COLORS.textLight, marginBottom: '28px', lineHeight: 1.5, fontWeight: 500 }}>¿Estás seguro de que deseas abandonar esta sesión clínica? Los cambios no guardados se perderán.</p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setShowCancelModal(false)} 
-                style={{ padding: '12px 20px', background: COLORS.background, color: COLORS.text, border: `1px solid ${COLORS.border}`, borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', transition: 'all 0.2s' }}
-                onMouseOver={e => e.currentTarget.style.background = '#e2e8f0'} 
-                onMouseOut={e => e.currentTarget.style.background = COLORS.background}
-              >
-                Volver a la consulta
-              </button>
-              <button 
-                onClick={onExit} 
-                style={{ padding: '12px 20px', background: COLORS.error, color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', transition: 'all 0.2s', boxShadow: '0 4px 6px rgba(239, 68, 68, 0.2)' }}
-                onMouseOver={e => e.currentTarget.style.background = '#dc2626'} 
-                onMouseOut={e => e.currentTarget.style.background = COLORS.error}
-              >
-                Sí, Cancelar y Salir
-              </button>
+              <button onClick={() => setShowCancelModal(false)} style={{ padding: '12px 20px', background: COLORS.background, color: COLORS.text, border: `1px solid ${COLORS.border}`, borderRadius: '10px', cursor: 'pointer', fontWeight: 700 }}>Volver</button>
+              <button onClick={onExit} style={{ padding: '12px 20px', background: COLORS.error, color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 700 }}>Sí, Cancelar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* TOAST CONFIRMACIÓN DE GUARDADO/IMPORTACIÓN */}
+      {/* TOAST CONFIRMACIÓN */}
       {showConfirmModal && (
         <div className="no-print" style={{ position: 'fixed', top: '24px', right: '24px', background: COLORS.success, color: 'white', padding: '16px 24px', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 1001, display: 'flex', alignItems: 'center', gap: '12px', animation: 'fadeIn 0.3s ease-out' }}>
           <CheckCircle size={24} /><span style={{ fontSize: '15px', fontWeight: 600 }}>{mensajeConfirmacion}</span>

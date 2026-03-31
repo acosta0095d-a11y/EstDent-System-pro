@@ -1,0 +1,218 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MINIMALIST OVERRIDE STYLES
+   Converts all component styles to minimalist white/gray/blue theme
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── RESET COMPLEX STYLES ─── */
+.vintage-theme,
+.vintage-portal,
+.vintage-main {
+  background: #f9fafb !important;
+}
+
+/* Override gradient backgrounds */
+[style*="gradient"] {
+  background: white !important;
+}
+
+/* ─── BUTTONS ─── */
+button {
+  transition: all 0.2s ease !important;
+}
+
+button[class*="gradient"],
+button[style*="gradient"] {
+  background: #3b82f6 !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Primary buttons */
+.bg-gradient-to-r,
+.from-blue,
+.bg-blue-600 {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+/* Secondary/Ghost buttons */
+.bg-white {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  color: #6b7280 !important;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(0.95) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ─── FORM ELEMENTS ─── */
+input,
+textarea,
+select {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  transition: all 0.2s ease !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  background: #fafbff !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Remove focus ring colors that are too bright */
+input:focus-ring,
+select:focus-ring {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* ─── CARDS ─── */
+.rounded-2xl,
+.rounded-3xl,
+.rounded-\[1\.5rem\] {
+  border-radius: 12px !important;
+}
+
+.border-slate {
+  border: 1px solid #e5e7eb !important;
+  border-color: #e5e7eb !important;
+}
+
+.bg-slate-50,
+.bg-slate-100 {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.bg-blue-50 {
+  background: #eff6ff !important;
+}
+
+.shadow-xl,
+.shadow-lg,
+.shadow-2xl {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ─── HEADERS ─── */
+h1, h2, h3, h4, h5, h6 {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+.text-slate-600,
+.text-slate-500,
+.text-slate-400 {
+  color: #6b7280 !important;
+}
+
+/* ─── DIVIDERS & BORDERS ─── */
+.border-slate-200,
+.border-slate-100 {
+  border-color: #e5e7eb !important;
+}
+
+/* ─── BADGES ─── */
+.px-3.py-1.rounded-full,
+.badge {
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+}
+
+.bg-blue-100 {
+  background: #eff6ff !important;
+  color: #0c4a6e !important;
+}
+
+.bg-emerald-100 {
+  background: #ecfdf5 !important;
+  color: #065f46 !important;
+}
+
+.bg-amber-100 {
+  background: #fffbeb !important;
+  color: #92400e !important;
+}
+
+.bg-rose-100 {
+  background: #fef2f2 !important;
+  color: #7f1d1d !important;
+}
+
+/* ─── ANIMATIONS ─── */
+.animate-spin {
+  animation: spin 0.6s linear infinite !important;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-in,
+.fade-in,
+.slide-in {
+  animation: fadeIn 0.3s ease !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ─── MODALS ─── */
+.fixed.inset-0 {
+  background: rgba(15, 23, 42, 0.4) !important;
+}
+
+.bg-white.rounded {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ─── REMOVES GRADIENTS ─── */
+.from-slate,
+.to-slate,
+.from-blue,
+.to-blue,
+.from-emerald,
+.to-emerald,
+.from-purple,
+.to-purple {
+  background: white !important;
+}
+
+/* ─── LAYOUT ─── */
+.flex {
+  display: flex;
+}
+
+.grid {
+  display: grid;
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

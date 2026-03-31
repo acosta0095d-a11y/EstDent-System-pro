@@ -1,27 +1,56 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { PatientProvider, usePatient } from './core/context/PatientContext';
 import { Sidebar } from './shared/components/Sidebar';
 import { PatientRadar } from './features/patients/pages/PatientRadar';
 import { PatientDashboard } from './features/patients/pages/PatientDashboard';
 import { GeneralConsultation } from './features/consultation/pages/GeneralConsultation';
-import { OrthoConsultation } from './features/consultation/pages/OrthoConsultation'; // ¡Descomentado!
+import { OrthoConsultation } from './features/consultation/pages/OrthoConsultation';
+import { Loader2 } from 'lucide-react';
+import { NewPatientWizard } from './features/patients/pages/NewPatientWizard';
 
-// Layout principal con Sidebar y navegación
 const MainLayout = () => {
   const { currentView, selectedPatient } = usePatient();
 
   return (
-    <div style={{ display: 'flex' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
       <Sidebar />
-      <main style={{ flex: 1, marginLeft: '260px', padding: '20px' }}>
-        {/* Inicio */}
+      <main style={{ flex: 1, marginLeft: '260px', overflow: 'auto' }}>
         {currentView === 'inicio' && (
-          <div>
-            <h1 style={{ color: '#00A4E4' }}>Inicio</h1>
+          <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '40px 20px',
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ marginBottom: '24px' }}>
+                <Loader2 size={48} style={{
+                  margin: '0 auto',
+                  color: '#3b82f6',
+                  animation: 'spin 2s linear infinite'
+                }} />
+              </div>
+              <h1 style={{
+                fontSize: '28px',
+                fontWeight: 700,
+                color: '#111827',
+                marginBottom: '12px'
+              }}>
+                Bienvenido a EstDent
+              </h1>
+              <p style={{
+                fontSize: '15px',
+                color: '#6b7280',
+                maxWidth: '480px',
+                margin: '0 auto'
+              }}>
+                Cargando tu información clínica y de pacientes...
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Pacientes */}
         {currentView === 'pacientes' && (
           <>
             {!selectedPatient && <PatientRadar />}
@@ -29,42 +58,102 @@ const MainLayout = () => {
           </>
         )}
 
-        {/* Agenda */}
         {currentView === 'agenda' && (
-          <div>
-            <h1>Agenda</h1>
+          <div style={{ padding: '40px', minHeight: '100vh' }}>
+            <div style={{
+              background: 'white',
+              padding: '40px',
+              borderRadius: '12px',
+              textAlign: 'center',
+              border: '1px solid #e5e7eb'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#111827', marginBottom: '12px' }}>
+                📅 Agenda
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                Módulo en desarrollo
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Inventario */}
         {currentView === 'inventario' && (
-          <div>
-            <h1>Inventario</h1>
+          <div style={{ padding: '40px', minHeight: '100vh' }}>
+            <div style={{
+              background: 'white',
+              padding: '40px',
+              borderRadius: '12px',
+              textAlign: 'center',
+              border: '1px solid #e5e7eb'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#111827', marginBottom: '12px' }}>
+                Inventario
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                Módulo en desarrollo
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Ajustes */}
         {currentView === 'ajustes' && (
-          <div>
-            <h1>Ajustes</h1>
+          <div style={{ padding: '40px', minHeight: '100vh' }}>
+            <div style={{
+              background: 'white',
+              padding: '40px',
+              borderRadius: '12px',
+              textAlign: 'center',
+              border: '1px solid #e5e7eb'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#111827', marginBottom: '12px' }}>
+                Configuración
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                Módulo en desarrollo
+              </p>
+            </div>
           </div>
         )}
       </main>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
 
-// Wrapper para consulta general
 const GeneralConsultaWrapper = () => {
+  const { saveConsultation } = usePatient();
+  const location = useLocation();
+
   return (
-    <GeneralConsultation onExit={() => window.history.back()} />
+    <GeneralConsultation
+      onExit={() => window.history.back()}
+      onSave={saveConsultation}
+      initialData={(location.state as any)?.initialData}
+    />
   );
 };
 
-// Wrapper para ortodoncia ¡Descomentado y activado!
 const OrthoConsultaWrapper = () => {
+  const { saveConsultation } = usePatient();
+  const location = useLocation();
+
   return (
-    <OrthoConsultation onExit={() => window.history.back()} />
+    <OrthoConsultation
+      onExit={() => window.history.back()}
+      onSave={saveConsultation}
+      initialData={(location.state as any)?.initialData}
+    />
+  );
+};
+
+const NewPatientWrapper = () => {
+  return (
+    <NewPatientWizard onClose={() => window.history.back()} />
   );
 };
 
@@ -73,14 +162,10 @@ function App() {
     <BrowserRouter>
       <PatientProvider>
         <Routes>
-          {/* Ruta principal con Sidebar */}
           <Route path="/*" element={<MainLayout />} />
-          
-          {/* Ruta de consulta general */}
           <Route path="/consulta/general" element={<GeneralConsultaWrapper />} />
-          
-          {/* Ruta de ortodoncia ¡Descomentada y lista! */}
           <Route path="/consulta/ortodoncia" element={<OrthoConsultaWrapper />} />
+          <Route path="/paciente/nuevo" element={<NewPatientWrapper />} />
         </Routes>
       </PatientProvider>
     </BrowserRouter>

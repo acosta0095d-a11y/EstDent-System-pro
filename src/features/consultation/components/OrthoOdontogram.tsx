@@ -13,7 +13,8 @@ import {
 const COLORS = {
   instalado: '#10b981', despegado: '#ef4444', fracturado: '#f59e0b', planificado: '#3b82f6',
   retirado: '#94a3b8', ausente: '#cbd5e1', healthy: '#ffffff',
-  primary: '#00A4E4', primaryLight: '#e0f2fe', primaryDark: '#0284c7',
+  primary: '#0071e3', primaryLight: '#e0f2fe', primaryDark: '#0284c7',
+  error: '#ef4444', errorLight: '#fee2e2',
   text: '#0f172a', textLight: '#64748b', border: '#cbd5e1', background: '#f8fafc'
 };
 
@@ -43,7 +44,7 @@ const CLINICAL_TOOLS = [
 ];
 
 interface OrthoTooth { number: string; ausente: boolean; base: { id: string; state: string } | null; auxiliares: Array<{ id: string; state: string }>; }
-interface Connection { id: string; toolId: string; teeth: string[]; state: string; timestamp: number; }
+interface Connection { id: string; toolId: string; teeth: string[]; state: string; timestamp: number; last_adjustment?: string; dias_activos?: number; }
 interface HistoryState { teethData: Record<string, OrthoTooth>; connections: Connection[]; }
 
 // ============================================
@@ -61,8 +62,9 @@ const ToothGraphic = React.memo(({ number, data, isSelected, onMouseDown, onMous
 
   return (
     <div 
+      className={`ortho-tooth-container${isSelected ? ' ortho-tooth-selected' : ''}`}
       onMouseDown={() => onMouseDown(number)} onMouseEnter={() => onMouseEnter(number)}
-      style={{ width: '44px', height: '68px', margin: '2px', position: 'relative', cursor: 'crosshair', transition: 'all 0.15s ease', transform: isSelected ? 'scale(1.15)' : 'scale(1)', zIndex: isSelected ? 20 : 1, opacity: data?.ausente ? 0.4 : 1, userSelect: 'none' }}
+      style={{ width: '44px', height: '68px', margin: '2px', position: 'relative', opacity: data?.ausente ? 0.4 : 1, userSelect: 'none', zIndex: isSelected ? 20 : 1 }}
     >
       <svg width="100%" height="100%" viewBox="0 0 100 130" style={{ overflow: 'visible' }}>
         <defs><filter id={`shadow-${number}`}><feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.1" /></filter></defs>
@@ -118,7 +120,7 @@ const ToothGraphic = React.memo(({ number, data, isSelected, onMouseDown, onMous
 // 4. COMPONENTE PRINCIPAL (MOTOR Y DASHBOARD DETALLADO)
 // ============================================
 
-export const OrthoOdontogram = ({ onUpdate }: any) => {
+export const OrthoOdontogram = ({ onUpdate, value }: any) => {
   const [activeState, setActiveState] = useState(STATES[0].id);
   const [activeTool, setActiveTool] = useState(CLINICAL_TOOLS[0].id);
   
@@ -130,6 +132,23 @@ export const OrthoOdontogram = ({ onUpdate }: any) => {
   
   const [history, setHistory] = useState<HistoryState[]>([{ teethData: {}, connections: [] }]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  // VÁLVULAS DE SEGURIDAD CONTRA BUCLES
+  const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
+  const lastUpdateRef = useRef("");
+
+  // REHIDRATACIÓN: Cargar estado desde Supabase (value)
+  useEffect(() => {
+    if (!isInitialLoadDone && value) {
+      // Intentamos cargar el estado crudo si viene en el value
+      // Nota: Para ortodoncia es mejor guardar el objeto completo teethData y connections
+      if (value.teethData) setTeethData(value.teethData);
+      if (value.connections) setConnections(value.connections);
+      
+      // Si el value es el array de hallazgos del padre, lo marcamos como cargado
+      setIsInitialLoadDone(true);
+    }
+  }, [value, isInitialLoadDone]);
 
   const upperTeeth = ['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28'];
   const lowerTeeth = ['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'];
@@ -164,7 +183,15 @@ export const OrthoOdontogram = ({ onUpdate }: any) => {
       if (activeState === 'retirado') {
         nextConns = nextConns.filter(c => !(c.toolId === tool.id && selection.some(t => c.teeth.includes(t))));
       } else {
-        nextConns.push({ id: `conn-${Date.now()}`, toolId: tool.id, teeth: [...selection], state: activeState, timestamp: Date.now() });
+        nextConns.push({
+          id: `conn-${Date.now()}`,
+          toolId: tool.id,
+          teeth: [...selection],
+          state: activeState,
+          timestamp: Date.now(),
+          last_adjustment: new Date().toISOString(),
+          dias_activos: 0
+        });
       }
     } else if (tool.id === 'ausente') {
       selection.forEach(num => { nextTeeth[num] = { ...(nextTeeth[num] || getTooth(num)), ausente: activeState !== 'retirado' }; });
@@ -185,24 +212,45 @@ export const OrthoOdontogram = ({ onUpdate }: any) => {
     setTeethData(nextTeeth); setConnections(nextConns); saveHistory(nextTeeth, nextConns);
   };
 
-  const prevDataString = useRef("");
+  // 🚀 SINCRONIZACIÓN: Enviar datos al Formulario Padre
   useEffect(() => {
     if (!onUpdate) return;
+
+    // 1. Generamos el resumen para el Formulario (lo que el Dr. lee)
+    const hallazgosExportar: any[] = [];
+    
+    Object.values(teethData).forEach(diente => {
+      if (diente.base && (diente.base.state === 'despegado' || diente.base.state === 'fracturado')) {
+        const tData = CLINICAL_TOOLS.find(t => t.id === diente.base?.id);
+        hallazgosExportar.push({ 
+          id: `falla-${diente.number}`, 
+          diente: diente.number, 
+          tipo: tData?.name || 'Aparato', 
+          severidad: diente.base.state, 
+          descripcion: `Falla detectada en pieza ${diente.number}` 
+        });
+      }
+    });
+
+    connections.forEach(conn => {
+      const tData = CLINICAL_TOOLS.find(t => t.id === conn.toolId);
+      hallazgosExportar.push({ 
+        id: conn.id, 
+        diente: `${conn.teeth[0]} - ${conn.teeth[conn.teeth.length-1]}`, 
+        tipo: tData?.name, 
+        severidad: conn.state, 
+        descripcion: `Sistema activo en ${conn.teeth.length} piezas` 
+      });
+    });
+
+    // 2. VÁLVULA: Solo notificamos si hay un cambio real en el JSON
     const currentDataString = JSON.stringify({ teethData, connections });
-    if (prevDataString.current !== currentDataString) {
-      prevDataString.current = currentDataString;
-      const hallazgosExportar: any[] = [];
-      Object.values(teethData).forEach(diente => {
-        if (diente.base && (diente.base.state === 'despegado' || diente.base.state === 'fracturado')) {
-          const tData = CLINICAL_TOOLS.find(t => t.id === diente.base?.id);
-          hallazgosExportar.push({ id: `falla-${diente.number}`, diente: diente.number, tipo: tData?.name || 'Aparato', severidad: diente.base.state, descripcion: `Falla en pieza ${diente.number}` });
-        }
-      });
-      connections.forEach(conn => {
-        const tData = CLINICAL_TOOLS.find(t => t.id === conn.toolId);
-        hallazgosExportar.push({ id: conn.id, diente: `${conn.teeth[0]} al ${conn.teeth[conn.teeth.length-1]}`, tipo: tData?.name, severidad: conn.state, descripcion: `Instalado en ${conn.teeth.length} piezas` });
-      });
-      onUpdate(hallazgosExportar);
+    if (lastUpdateRef.current !== currentDataString) {
+      lastUpdateRef.current = currentDataString;
+      
+      // Enviamos tanto los hallazgos para el Dr. como el estado crudo para rehidratar
+      // El padre guardará esto en el JSONB de Supabase
+      onUpdate(hallazgosExportar, { teethData, connections });
     }
   }, [teethData, connections, onUpdate]);
 
@@ -276,6 +324,83 @@ export const OrthoOdontogram = ({ onUpdate }: any) => {
 
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', width: '100%', background: 'white', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', color: COLORS.text }}>
+      <style>{`
+        .ortho-tooth-container {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: crosshair;
+          position: relative;
+        }
+        .ortho-tooth-container:hover {
+          transform: scale(1.2) translateY(-3px);
+          z-index: 20;
+          filter: drop-shadow(0 12px 20px rgba(0, 113, 227, 0.25));
+        }
+        .ortho-tooth-container:active {
+          transform: scale(1.1) translateY(-1px);
+          transition: all 0.1s ease;
+        }
+        .ortho-tooth-selected {
+          animation: orthoToothGlow 2s ease-in-out infinite;
+          box-shadow: 0 0 20px rgba(0, 113, 227, 0.3);
+        }
+        @keyframes orthoToothGlow {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 113, 227, 0.3)); }
+          50% { filter: drop-shadow(0 0 16px rgba(0, 113, 227, 0.6)); }
+        }
+        .state-button {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+        }
+        .state-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+          transition: left 0.4s;
+        }
+        .state-button:hover::before {
+          left: 100%;
+        }
+        .state-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        .state-button:active {
+          transform: translateY(0px);
+          transition: all 0.1s ease;
+        }
+        .tool-panel {
+          animation: slideInLeft 0.5s ease-out;
+        }
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .odontogram-canvas {
+          animation: fadeInScale 0.6s ease-out;
+        }
+        @keyframes fadeInScale {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .connection-line {
+          stroke-dasharray: 5,5;
+          animation: dashFlow 2s linear infinite;
+        }
+        @keyframes dashFlow {
+          to { stroke-dashoffset: -10; }
+        }
+        .bracket-element {
+          transition: all 0.2s ease;
+        }
+        .bracket-element:hover {
+          filter: brightness(1.2) saturate(1.3);
+        }
+      `}</style>
       
       {/* BARRA SUPERIOR (ESTADOS Y DESHACER) */}
       <div style={{ padding: '20px 30px', background: '#f8fafc', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
