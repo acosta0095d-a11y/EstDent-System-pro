@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { supabase } from '../../shared/lib/supabase';
+import {
+  attachConsultationCodeToDetails,
+  buildConsultationCode,
+  omitConsultationCodeColumn,
+  shouldRetryWithoutConsultationCodeColumn,
+} from '../../shared/lib/consultationUtils';
+import { AgendaDraftPayload } from '../../shared/lib/clinicalWorkflow';
+import { normalizePatientRh } from '../../shared/lib/patientRhUtils';
 
 // ============================================
 // TIPOS
@@ -14,6 +22,9 @@ export interface Patient {
   creado_en: string;
   telefono?: string;
   email?: string;
+  municipio_ciudad?: string;
+  direccion?: string;
+  tipo_sangre_rh?: string;
   consultas?: any[];
   clinical_history?: any;
   historia_completa?: boolean;
@@ -27,6 +38,9 @@ interface PatientContextType {
   setPatients: (patients: Patient[]) => void;
   saveConsultation: (consultationData: any) => Promise<any>;
   loadPatientById: (id: string) => Promise<void>;
+  agendaDraft: AgendaDraftPayload | null;
+  setAgendaDraft: (draft: AgendaDraftPayload | null) => void;
+  clearAgendaDraft: () => void;
   
   // Navegación
   currentView: string;
@@ -42,35 +56,86 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [currentView, setCurrentView] = useState<string>('inicio');
+  const [agendaDraft, setAgendaDraft] = useState<AgendaDraftPayload | null>(null);
+
+  const clearAgendaDraft = () => setAgendaDraft(null);
 
   const saveConsultation = async (consultationData: any) => {
     if (!consultationData || !consultationData.paciente_id) {
       throw new Error('No se proporcionó paciente_id en consultationData');
     }
 
+    const consultationCode = consultationData.codigo_consulta || buildConsultationCode({
+      consultationId: consultationData.id,
+      consultationType: consultationData.tipo_consulta || 'GENERAL',
+      consultationDate: consultationData.fecha || consultationData.created_at || new Date().toISOString(),
+    });
+
+    const patientSnapshotSource =
+      (consultationData.detalles_clinicos && typeof consultationData.detalles_clinicos === 'object' && consultationData.detalles_clinicos.paciente)
+      || (consultationData.detalles && typeof consultationData.detalles === 'object' && consultationData.detalles.paciente)
+      || {};
+
+    const sourcePatient = selectedPatient && selectedPatient.id === consultationData.paciente_id
+      ? selectedPatient
+      : null;
+
+    const patientSnapshot = {
+      id: patientSnapshotSource.id || consultationData.paciente_id || sourcePatient?.id || '',
+      nombre: patientSnapshotSource.nombre || consultationData.nombre || sourcePatient?.nombre || '',
+      apellidos: patientSnapshotSource.apellidos || consultationData.apellidos || sourcePatient?.apellidos || '',
+      nombre_completo:
+        patientSnapshotSource.nombre_completo
+        || `${patientSnapshotSource.nombre || consultationData.nombre || sourcePatient?.nombre || ''} ${patientSnapshotSource.apellidos || consultationData.apellidos || sourcePatient?.apellidos || ''}`.trim(),
+      cc: patientSnapshotSource.cc || consultationData.cc || sourcePatient?.cc || '',
+      codigo_paciente:
+        patientSnapshotSource.codigo_paciente
+        || consultationData.codigo_paciente
+        || sourcePatient?.id
+        || consultationData.paciente_id
+        || '',
+      tipo_documento: patientSnapshotSource.tipo_documento || consultationData.tipo_documento || 'CC',
+    };
+
+    const attachDetailsWithSnapshot = (rawDetails: any) => {
+      const detailsWithCode = attachConsultationCodeToDetails(rawDetails || {}, consultationCode) as any;
+      const workflowSummary = detailsWithCode.workflow_summary && typeof detailsWithCode.workflow_summary === 'object' && !Array.isArray(detailsWithCode.workflow_summary)
+        ? detailsWithCode.workflow_summary
+        : {};
+
+      return {
+        ...detailsWithCode,
+        paciente: detailsWithCode.paciente || patientSnapshot,
+        workflow_summary: {
+          ...workflowSummary,
+          paciente: workflowSummary.paciente || detailsWithCode.paciente || patientSnapshot,
+        },
+      };
+    };
+
     // Estructurar el payload exactamente según las especificaciones
     let payload: any = {
       paciente_id: consultationData.paciente_id,
       tipo_consulta: consultationData.tipo_consulta || 'GENERAL',
-      tiempo_sesion: consultationData.tiempo_atencion_segundos || consultationData.tiempo_sesion || 0
+      tiempo_sesion: consultationData.tiempo_atencion_segundos || consultationData.tiempo_sesion || 0,
+      codigo_consulta: consultationCode,
     };
 
     // Manejar diferentes estructuras de payload
-    if (consultationData.detalles_clinicos && consultationData.detalles_clinicos.anamnesis) {
-      // Estructura de OrthoConsultation con nuevo formato
-      payload.hallazgos_odontograma = consultationData.hallazgos_odontograma || [];
+    if (consultationData.detalles_clinicos) {
+      payload.hallazgos_odontograma = consultationData.hallazgos_odontograma || consultationData.hallazgos || [];
       payload.estado_odontograma = consultationData.estado_odontograma || {};
-      payload.detalles_clinicos = consultationData.detalles_clinicos;
+      payload.detalles_clinicos = attachDetailsWithSnapshot(consultationData.detalles_clinicos);
     } else if (consultationData.detalles) {
       // Estructura antigua de OrthoConsultation (por compatibilidad)
       payload.hallazgos_odontograma = consultationData.hallazgos || [];
       payload.estado_odontograma = consultationData.estado_odontograma || {};
-      payload.detalles_clinicos = consultationData.detalles;
+      payload.detalles_clinicos = attachDetailsWithSnapshot(consultationData.detalles);
     } else {
-      // Estructura de GeneralConsultation
+      // Estructura de compatibilidad cuando llega payload plano
       payload.hallazgos_odontograma = consultationData.hallazgos_odontograma || [];
       payload.estado_odontograma = consultationData.estado_odontograma || {};
-      payload.detalles_clinicos = {
+      payload.detalles_clinicos = attachDetailsWithSnapshot({
         motivo: consultationData.motivo_principal,
         tags: consultationData.motivo_tags,
         examen_fisico: consultationData.examen_estomatologico,
@@ -83,7 +148,7 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
         notas: consultationData.estado_general,
         diagnosticos_cie10: consultationData.diagnosticos_cie10,
         consentimiento_informado: consultationData.consentimiento_informado
-      };
+      });
     }
 
     const insertIntoConsultas = async (payload: any) => {
@@ -102,7 +167,11 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
     };
 
     try {
-      const { data, error } = await insertIntoConsultas(payload);
+      let { data, error } = await insertIntoConsultas(payload);
+
+      if (error && shouldRetryWithoutConsultationCodeColumn(error)) {
+        ({ data, error } = await insertIntoConsultas(omitConsultationCodeColumn(payload)));
+      }
 
       if (error) {
         console.error('[saveConsultation] Error de Supabase:', {
@@ -184,6 +253,7 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
           if (detalles.anamnesis) {
             return {
               ...consulta,
+              codigo_consulta: consulta.codigo_consulta || detalles.codigo_consulta || detalles.workflow_summary?.codigo_consulta,
               ...detalles.anamnesis,
               examenOrto: detalles.examen,
               procedimientos: detalles.plan_tratamiento,
@@ -196,11 +266,16 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
           } else {
             return {
               ...consulta,
+              codigo_consulta: consulta.codigo_consulta || detalles.codigo_consulta || detalles.workflow_summary?.codigo_consulta,
               motivo_principal: detalles.motivo,
               motivo_tags: detalles.tags,
               estado_general: detalles.notas,
-              dolor_escala: detalles.dolor?.escala,
-              dolor_detalles: detalles.dolor?.detalles,
+              dolor_escala: detalles.evaluacionDolor?.escala ?? detalles.dolor?.escala,
+              dolor_detalles: detalles.evaluacionDolor || detalles.dolor?.detalles || detalles.dolor,
+              evaluacionDolor: detalles.evaluacionDolor || (detalles.dolor ? {
+                ...(detalles.dolor.detalles || {}),
+                escala: detalles.dolor.escala,
+              } : undefined),
               examen_estomatologico: detalles.examen_fisico,
               diagnosticos_cie10: detalles.diagnosticos_cie10,
               plan_tratamiento: detalles.plan_tratamiento,
@@ -230,7 +305,8 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
           consultas: consultasNorm,
           edad: computedAge ?? 0,
           telefono: paciente.telefono || '',
-          email: paciente.email ? String(paciente.email).trim().toLowerCase() : ''
+          email: paciente.email ? String(paciente.email).trim().toLowerCase() : '',
+          tipo_sangre_rh: normalizePatientRh(paciente.tipo_sangre_rh),
         } as Patient);
       }
     } catch (error) {
@@ -247,6 +323,9 @@ export const PatientProvider = ({ children }: { children: ReactNode }) => {
       setPatients,
       saveConsultation,
       loadPatientById,
+      agendaDraft,
+      setAgendaDraft,
+      clearAgendaDraft,
       currentView,
       setCurrentView
     }}>

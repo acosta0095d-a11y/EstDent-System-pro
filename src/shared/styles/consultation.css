@@ -197,14 +197,19 @@
 .card {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px;
-  transition: all 0.2s ease;
+  border-radius: 18px;
+  padding: 24px;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1500px;
+  width: calc(100% - 16px);
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,.02);
 }
 
 .card:hover {
   border-color: #3b82f6;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.13);
 }
 
 .card.selected {

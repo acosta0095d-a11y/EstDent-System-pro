@@ -5,11 +5,16 @@ import { NewPatientWizard } from './NewPatientWizard';
 import { patientService } from '../services/patientService';
 import { formatPatientSerial } from './patientUtils';
 import {
+  formatPatientRh,
+  PATIENT_RH_OPTIONS,
+  shouldRetryWithoutPatientRhColumn,
+} from '../../../shared/lib/patientRhUtils';
+import {
   Search, UserPlus, Loader2,
-  Users, Grid3x3, List, RefreshCcw,
-  UserCheck, AlertTriangle, User, Calendar,
+  Users, List, RefreshCcw,
+  UserCheck, AlertTriangle, Calendar,
   ChevronUp, ChevronDown, ArrowUpDown,
-  Trash2, X,
+  Trash2, X, Eye, Edit3, MoreHorizontal, Phone, Mail, MapPin,
 } from 'lucide-react';
 
 /* ─── tipos sort ────────────────────────────────────────────── */
@@ -60,9 +65,10 @@ interface DeleteConfirmModalProps {
   onConfirm: () => void;
   patientName: string;
   deleting: boolean;
+  error?: string | null;
 }
 
-const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, patientName, deleting }: DeleteConfirmModalProps) => {
+const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, patientName, deleting, error }: DeleteConfirmModalProps) => {
   if (!isOpen) return null;
 
   return (
@@ -213,6 +219,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, patientName, deleting 
               {deleting ? 'Eliminando...' : 'Eliminar'}
             </button>
           </div>
+          {error && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 8, textAlign: 'center' }}>{error}</p>}
         </div>
       </div>
     </div>
@@ -232,9 +239,41 @@ const QuickEditModal = ({ isOpen, patient, onClose, onSaved }: {
     fecha_nacimiento: patient?.fecha_nacimiento || '',
     telefono: patient?.telefono || '',
     email: patient?.email || '',
-    municipio_ciudad: patient?.municipio_ciudad || ''
+    municipio_ciudad: patient?.municipio_ciudad || '',
+    direccion: patient?.direccion || '',
+    tipo_sangre_rh: patient?.tipo_sangre_rh || ''
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  /* ── drag state ── */
+  const [pos, setPos] = useState<{x:number;y:number}|null>(null);
+  const dragging = useRef(false);
+  const dragOffset = useRef({x:0,y:0});
+  const winRef = useRef<HTMLDivElement|null>(null);
+
+  /* centre on first open */
+  useEffect(() => {
+    if (isOpen) {
+      setPos({ x: Math.max(0, (window.innerWidth - 480) / 2), y: Math.max(0, (window.innerHeight - 600) / 2) });
+    }
+  }, [isOpen]);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    dragging.current = true;
+    dragOffset.current = { x: e.clientX - (pos?.x??0), y: e.clientY - (pos?.y??0) };
+    e.preventDefault();
+  };
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current) return;
+      setPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+    };
+    const onUp = () => { dragging.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, []);
 
   useEffect(() => {
     if (!patient) return;
@@ -245,7 +284,9 @@ const QuickEditModal = ({ isOpen, patient, onClose, onSaved }: {
       fecha_nacimiento: patient.fecha_nacimiento || '',
       telefono: patient.telefono || '',
       email: patient.email || '',
-      municipio_ciudad: patient.municipio_ciudad || ''
+      municipio_ciudad: patient.municipio_ciudad || '',
+      direccion: patient.direccion || '',
+      tipo_sangre_rh: patient.tipo_sangre_rh || ''
     });
   }, [patient]);
 
@@ -253,80 +294,160 @@ const QuickEditModal = ({ isOpen, patient, onClose, onSaved }: {
     e.preventDefault();
     if (!patient?.id) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      const updated = await patientService.updatePatient(patient.id, formData);
-      onSaved({ ...patient, ...formData });
+      const updatedRows = await patientService.updatePatient(patient.id, formData);
+      const persisted = Array.isArray(updatedRows) && updatedRows[0] ? updatedRows[0] : null;
+      onSaved({ ...patient, ...formData, ...(persisted || {}) });
       onClose();
     } catch (error) {
       console.error('Error quick editing patient:', error);
-      alert('No fue posible actualizar el paciente');
+      setSaveError('No fue posible actualizar el paciente. Intente de nuevo.');
     } finally {
       setSaving(false);
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !pos) return null;
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 13px', borderRadius: 12,
+    border: '1.5px solid #eef0f2', fontSize: 13.5, fontFamily: 'inherit',
+    outline: 'none', transition: 'border-color .15s', background: '#fafbfc', color: '#1e293b',
+  };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0,0,0,.18)',
-      backdropFilter: 'blur(6px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1100,
-      padding: 20
-    }}>
-      <div style={{
-        width: 480,
-        maxWidth: '100%',
-        borderRadius: 20,
+    <div
+      ref={winRef}
+      style={{
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        width: 460,
+        zIndex: 1200,
+        borderRadius: 22,
         background: '#fff',
-        border: '1px solid rgba(0,0,0,.08)',
-        boxShadow: '0 32px 70px rgba(0,0,0,.16)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ padding: '22px 26px', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#1d1d1f' }}>Editar Datos Rápidos</h3>
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6b7280' }}>Actualiza el paciente sin salir de la tabla.</p>
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.07), 0 0 0 1px rgba(255,255,255,.8)',
+        overflow: 'hidden',
+        fontFamily: "'Inter',-apple-system,sans-serif",
+        userSelect: 'none',
+      }}
+    >
+      {/* ── Title bar (drag handle) ── */}
+      <div
+        onMouseDown={onMouseDown}
+        style={{
+          padding: '16px 20px 14px',
+          background: 'linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%)',
+          borderBottom: '1px solid #eef0f2',
+          cursor: 'grab',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#1e293b', letterSpacing: '-.02em' }}>Editar Datos</div>
+          <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2, fontWeight: 500 }}>
+            {patient?.nombre} {patient?.apellidos}
+          </div>
         </div>
-        <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'grid', gap: 14 }}>
-          <div style={{ display: 'grid', gap: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Documento</label>
-            <input className="input-pro" value={formData.cc} onChange={e => setFormData({ ...formData, cc: e.target.value })} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ display: 'grid', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Nombre</label>
-              <input className="input-pro" value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} />
-            </div>
-            <div style={{ display: 'grid', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Apellidos</label>
-              <input className="input-pro" value={formData.apellidos} onChange={e => setFormData({ ...formData, apellidos: e.target.value })} />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ display: 'grid', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Teléfono</label>
-              <input className="input-pro" value={formData.telefono} onChange={e => setFormData({ ...formData, telefono: e.target.value })} />
-            </div>
-            <div style={{ display: 'grid', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Email</label>
-              <input className="input-pro" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Municipio/Ciudad</label>
-            <input className="input-pro" value={formData.municipio_ciudad} onChange={e => setFormData({ ...formData, municipio_ciudad: e.target.value })} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 6 }}>
-            <button type="button" onClick={onClose} style={{ padding: '10px 18px', borderRadius: 999, border: '1px solid rgba(0,0,0,.09)', background: '#f8fafc', color: '#1d1d1f', fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
-            <button type="submit" className="btn-blue" disabled={saving} style={{ opacity: saving ? 0.6 : 1 }}>{saving ? 'Guardando...' : 'Guardar cambios'}</button>
-          </div>
-        </form>
+        <button
+          onClick={onClose}
+          style={{
+            width: 28, height: 28, borderRadius: 8, border: '1.5px solid #e2e8f0',
+            background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', color: '#64748b', transition: 'all .15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; }}
+        >
+          <X size={13}/>
+        </button>
       </div>
+
+      {/* ── Form ── */}
+      <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'grid', gap: 13, userSelect: 'text' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Documento</label>
+          <input style={inputStyle} value={formData.cc} onChange={e => setFormData({ ...formData, cc: e.target.value })}
+            onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+            onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Nombre</label>
+            <input style={inputStyle} value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })}
+              onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+              onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Apellidos</label>
+            <input style={inputStyle} value={formData.apellidos} onChange={e => setFormData({ ...formData, apellidos: e.target.value })}
+              onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+              onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Teléfono</label>
+            <input style={inputStyle} value={formData.telefono} onChange={e => setFormData({ ...formData, telefono: e.target.value })}
+              onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+              onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Email</label>
+            <input style={inputStyle} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })}
+              onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+              onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'} />
+          </div>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Tipo de Sangre / RH</label>
+          <select style={inputStyle} value={formData.tipo_sangre_rh} onChange={e => setFormData({ ...formData, tipo_sangre_rh: e.target.value })}
+            onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+            onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'}>
+            <option value="">Seleccionar...</option>
+            {PATIENT_RH_OPTIONS.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Municipio / Ciudad</label>
+          <input style={inputStyle} value={formData.municipio_ciudad} onChange={e => setFormData({ ...formData, municipio_ciudad: e.target.value })}
+            onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+            onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Direccion</label>
+          <input style={inputStyle} value={formData.direccion} onChange={e => setFormData({ ...formData, direccion: e.target.value })}
+            onFocus={e => e.currentTarget.style.borderColor = '#29b2e8'}
+            onBlur={e => e.currentTarget.style.borderColor = '#eef0f2'} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+          <button type="button" onClick={onClose} style={{
+            padding: '9px 18px', borderRadius: 10, border: '1.5px solid #e2e8f0',
+            background: '#fff', color: '#475569', fontWeight: 600, fontSize: 13.5, cursor: 'pointer',
+            fontFamily: 'inherit', transition: 'all .15s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#fff'; }}
+          >Cancelar</button>
+          <button type="submit" disabled={saving} style={{
+            padding: '9px 22px', borderRadius: 10, border: 'none',
+            background: '#29b2e8', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer',
+            fontFamily: 'inherit', opacity: saving ? 0.65 : 1,
+            boxShadow: '0 1px 3px rgba(41,178,232,.3), 0 4px 14px rgba(41,178,232,.2)',
+            transition: 'all .15s',
+          }}
+            onMouseEnter={e => { if (!saving) { e.currentTarget.style.background = '#18a3db'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#29b2e8'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          >{saving ? 'Guardando...' : 'Guardar cambios'}</button>
+        </div>
+        {saveError && <p style={{ color: '#ef4444', fontSize: 12, margin: 0, textAlign: 'right' }}>{saveError}</p>}
+      </form>
     </div>
   );
 };
@@ -364,7 +485,6 @@ export const PatientRadar = () => {
   const [searchTerm,      setSearchTerm]      = useState('');
   const [filtroCiudad,    setFiltroCiudad]    = useState('todas');
   const [filtroEstado,    setFiltroEstado]    = useState('todos');
-  const [viewMode,        setViewMode]        = useState<'table'|'folders'>('table');
   const [hoveredCard,     setHoveredCard]     = useState<string|null>(null);
   const [actionMenuOpen,  setActionMenuOpen]  = useState<string|null>(null);
   const [isWizardOpen,    setIsWizardOpen]    = useState(false);
@@ -373,16 +493,14 @@ export const PatientRadar = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string|null>(null);
   const [savingEdit,      setSavingEdit]      = useState(false);
   const [deleting,        setDeleting]        = useState(false);
+  const [deleteError,     setDeleteError]     = useState<string | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{ patient:any; x:number; y:number } | null>(null);
   const [quickEditPatient, setQuickEditPatient] = useState<any>(null);
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // ── estado UI nuevo ──
   const [sortField,    setSortField]    = useState<SortField>('nombre');
   const [sortDir,      setSortDir]      = useState<SortDir>('asc');
-  const [openFolder,   setOpenFolder]   = useState<string|null>(null);
-  const [viewChanging, setViewChanging] = useState(false);
   const spinRef = useRef<SVGSVGElement>(null);
 
   /* ─── BD BLINDADA ─────────────────────────────────────────── */
@@ -401,14 +519,29 @@ export const PatientRadar = () => {
       setLoading(true); setErrorSync(null);
       console.log('Intentando cargar pacientes desde Supabase...');
 
-      const { data, error } = await supabase.from('pacientes')
-        .select('id, cc, nombre, apellidos, fecha_nacimiento, edad, creado_en, estado, telefono, email')
-        .order('creado_en', { ascending: false });
+      const baseSelect = 'id, cc, nombre, apellidos, fecha_nacimiento, edad, creado_en, estado, telefono, email, municipio_ciudad, direccion';
+      const selectWithRh = `${baseSelect}, tipo_sangre_rh`;
+
+      let data: any[] | null = null;
+      let error: any = null;
+
+      ({ data, error } = await supabase.from('pacientes')
+        .select(selectWithRh)
+        .order('creado_en', { ascending: false }));
+
+      let hasRhColumn = true;
+
+      if (error && shouldRetryWithoutPatientRhColumn(error)) {
+        hasRhColumn = false;
+        ({ data, error } = await supabase.from('pacientes')
+          .select(baseSelect)
+          .order('creado_en', { ascending: false }));
+      }
 
       console.log('Respuesta de Supabase:', { data: data?.length || 0, error });
       if (data && data.length > 0) {
         const sample = data[0];
-        const missing = ['telefono', 'email'].filter((k) => !(k in sample));
+        const missing = ['telefono', 'email', ...(hasRhColumn ? ['tipo_sangre_rh'] : [])].filter((k) => !(k in sample));
         if (missing.length > 0) {
           console.warn('Columnas faltantes en pacientes:', missing.join(', '));
           setErrorSync(`Algunos campos no fueron devueltos por la consulta: ${missing.join(', ')}.`);
@@ -431,7 +564,8 @@ export const PatientRadar = () => {
           ...p,
           edad: safeAge,
           telefono: p?.telefono && String(p.telefono).trim() ? String(p.telefono).trim() : '',
-          email: p?.email && String(p.email).trim() ? String(p.email).trim().toLowerCase() : ''
+          email: p?.email && String(p.email).trim() ? String(p.email).trim().toLowerCase() : '',
+          tipo_sangre_rh: formatPatientRh(p?.tipo_sangre_rh, '')
         };
       });
 
@@ -509,7 +643,9 @@ export const PatientRadar = () => {
       if(!p) return false;
       const full=`${p?.nombre||''} ${p?.apellidos||''}`.toLowerCase();
       const doc=String(p?.cc||'');
-      return searchTerm===''||full.includes(searchTerm.toLowerCase())||doc.includes(searchTerm);
+      const matchSearch = searchTerm===''||full.includes(searchTerm.toLowerCase())||doc.includes(searchTerm);
+      const matchEstado = filtroEstado==='todos'||(filtroEstado==='activo'&&(p?.estado==='ACTIVO'||!p?.estado))||(filtroEstado==='hoy'&&new Date(p?.creado_en).toDateString()===new Date().toDateString());
+      return matchSearch && matchEstado;
     });
     return [...list].sort((a,b)=>{
       if(sortField==='nombre')    { const va=`${a.nombre||''} ${a.apellidos||''}`,vb=`${b.nombre||''} ${b.apellidos||''}`; return sortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va); }
@@ -520,7 +656,7 @@ export const PatientRadar = () => {
       if(sortField==='creado_en') { const va=new Date(a.creado_en||0).getTime(),vb=new Date(b.creado_en||0).getTime(); return sortDir==='asc'?va-vb:vb-va; }
       return 0;
     });
-  },[patients,searchTerm,sortField,sortDir]);
+  },[patients,searchTerm,filtroEstado,sortField,sortDir]);
 
   const activeCount = patients.length;
 
@@ -537,247 +673,332 @@ export const PatientRadar = () => {
     setContextMenuState({ patient, x, y });
   };
 
-  const handleViewChange = (mode:'table'|'folders')=>{
-    if(mode===viewMode) return;
-    setViewChanging(true);
-    setTimeout(()=>{ setViewMode(mode); setViewChanging(false); },200);
-  };
-
-  /* grupos para carpetas */
-  const folderGroups = useMemo(()=>{
-    const map:Record<string,any[]>={};
-    filteredPatients.forEach(p=>{
-      const k=String(p?.nombre||'?')[0].toUpperCase();
-      if(!map[k]) map[k]=[];
-      map[k].push(p);
-    });
-    return Object.entries(map).sort(([a],[b])=>a.localeCompare(b));
-  },[filteredPatients]);
-
   const SortIcon=({field}:{field:SortField})=>{
-    if(sortField!==field) return <ArrowUpDown size={11} style={{color:'#c0c0c5',flexShrink:0}}/>;
+    if(sortField!==field) return <ArrowUpDown size={11} style={{color:'#cbd5e1',flexShrink:0}}/>;
     return sortDir==='asc'
-      ? <ChevronUp   size={11} style={{color:'#0071e3',flexShrink:0}}/>
-      : <ChevronDown size={11} style={{color:'#0071e3',flexShrink:0}}/>;
+      ? <ChevronUp   size={11} style={{color:'#64748b',flexShrink:0}}/>
+      : <ChevronDown size={11} style={{color:'#64748b',flexShrink:0}}/>;
   };
+
+  /* ── Row Actions Dropdown ── */
+  const [openActionsId, setOpenActionsId] = useState<string|null>(null);
+  const actionsRef = useRef<HTMLDivElement|null>(null);
+
+  useEffect(() => {
+    if (!openActionsId) return;
+    const close = (e: MouseEvent) => {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setOpenActionsId(null);
+    };
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [openActionsId]);
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
-        .pr,  .pr *   { font-family:'Geist',system-ui,sans-serif; box-sizing:border-box; }
-        .pr-mono      { font-family:'Geist Mono',monospace; }
-        .pr            { background:#f5f5f7; min-height:100vh; padding:28px 32px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        .pr, .pr * { font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; box-sizing:border-box; }
+        .pr-mono { font-family:'JetBrains Mono','SF Mono',monospace; }
+        .pr { background:#f4f7f9; min-height:100vh; padding:24px 15px; }
 
-        /* ── anim ── */
-        @keyframes prFadeUp  { from{opacity:0;transform:translateY(-8px)}  to{opacity:1;transform:translateY(0)} }
-        @keyframes prRowIn   { from{opacity:0;transform:translateX(-5px)}  to{opacity:1;transform:translateX(0)} }
-        @keyframes prFolderIn{ from{opacity:0;transform:scale(.88) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
-        @keyframes prSpin    { to{transform:rotate(360deg)} }
-        @keyframes prSpinOnce{ from{transform:rotate(0)} to{transform:rotate(360deg)} }
+        @keyframes prSlideUp { from{opacity:0} to{opacity:1} }
+        @keyframes prScaleIn { from{opacity:0} to{opacity:1} }
+        @keyframes prSpin { to{transform:rotate(360deg)} }
+        @keyframes prSpinOnce { from{transform:rotate(0)} to{transform:rotate(0)} }
+        @keyframes prShimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
 
-        .pr-fade-up  { animation:prFadeUp   .38s cubic-bezier(.4,0,.2,1) both; }
-        .pr-spin     { animation:prSpin 1s  linear infinite; }
-        .pr-spin-once{ animation:prSpinOnce .5s ease; }
+        .pr-slide { animation:none; }
+        .pr-scale { animation:none; }
+        .pr-spin { animation:prSpin .8s linear infinite; }
+        .pr-spin-once { animation:none; }
 
-        /* ── botón nuevo ── */
-        .pr-btn-new{
-          display:flex;align-items:center;gap:7px;
-          padding:9px 20px; border:none; border-radius:980px;
-          background:#0071e3; color:#fff;
-          font-family:'Geist',sans-serif; font-size:13px; font-weight:600;
-          cursor:pointer; white-space:nowrap;
-          box-shadow:0 2px 10px rgba(0,113,227,.35);
-          transition:background .15s,transform .15s,box-shadow .15s;
+        /* ── Header ── */
+        .pr-header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:22px; }
+        .pr-btn-new {
+          display:inline-flex; align-items:center; gap:9px;
+          padding:11px 22px; border:none; border-radius:14px;
+          background:#1ba1d8;
+          color:#fff; font-size:13px; font-weight:700; cursor:pointer;
+          font-family:inherit; transition:all .28s cubic-bezier(.22,1,.36,1);
+          box-shadow:0 4px 18px rgba(27,161,216,.36);
         }
-        .pr-btn-new:hover { background:#0077ed; transform:translateY(-1px); box-shadow:0 4px 18px rgba(0,113,227,.45); }
-        .pr-btn-new:active{ transform:scale(.97); }
+        .pr-btn-new:hover { box-shadow:0 8px 28px rgba(27,161,216,.44); background:#169cd0; }
+        .pr-btn-new:active { background:#169cd0; }
 
-        /* ── stat ── */
-        .pr-stat{
-          background:#fff; border:1px solid rgba(0,0,0,.07);
-          border-radius:18px; padding:20px 24px;
-          display:flex; align-items:center; justify-content:space-between;
-          box-shadow:0 1px 4px rgba(0,0,0,.04);
-          transition:box-shadow .2s,transform .2s;
+        /* ── Stats ── */
+        .pr-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
+        .pr-stat-card {
+          background:#ffffff;
+          border:1px solid #dce3ec;
+          border-radius:14px;
+          padding:10px 14px;
+          display:flex; align-items:center; gap:12px;
+          transition:box-shadow .18s ease;
+          cursor:default;
+          box-shadow:0 4px 12px rgba(15,23,42,.08);
         }
-        .pr-stat:hover{ box-shadow:0 6px 20px rgba(0,0,0,.09); transform:translateY(-2px); }
-
-        /* ── toolbar ── */
-        .pr-toolbar{
-          background:#fff; border:1px solid rgba(0,0,0,.08);
-          border-radius:14px; padding:10px 14px;
-          display:flex; gap:10px; align-items:center;
-          box-shadow:0 1px 3px rgba(0,0,0,.04);
+        .pr-stat-card:hover { box-shadow:0 8px 18px rgba(15,23,42,.11); }
+        .pr-stat-icon {
+          width:32px; height:32px; border-radius:9px; flex-shrink:0;
+          display:flex; align-items:center; justify-content:center;
+          transition:none;
+          background:#ffffff;
+          border:1px solid #dce3ec;
+          box-shadow:0 2px 6px rgba(15,23,42,.06);
         }
-        .pr-si{ width:100%; background:#f5f5f7; border:1px solid rgba(0,0,0,.09); border-radius:10px; padding:8px 12px 8px 36px; font-family:'Geist',sans-serif; font-size:13px; color:#1d1d1f; outline:none; transition:all .18s; }
-        .pr-si::placeholder{ color:#a1a1a6; }
-        .pr-si:focus{ background:#fff; border-color:#0071e3; box-shadow:0 0 0 3px rgba(0,113,227,.12); }
+        .pr-stat-card:hover .pr-stat-icon { transform:none; }
+        .pr-stat-body { display:flex; flex-direction:column; min-width:0; }
+        .pr-stat-val { font-size:18px; font-weight:900; color:#1e293b; letter-spacing:-.03em; line-height:1; }
+        .pr-stat-lbl { font-size:9px; font-weight:700; color:#7b8aa0; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-        .pr-toggle-wrap{ display:flex;gap:3px;background:#f5f5f7;border:1px solid rgba(0,0,0,.08);border-radius:10px;padding:3px; }
-        .pr-toggle-btn{ padding:6px 9px;border-radius:7px;border:none;background:none;cursor:pointer;color:#86868b;display:flex;align-items:center;transition:all .15s; }
-        .pr-toggle-btn:hover{ color:#1d1d1f;background:rgba(0,0,0,.04); }
-        .pr-toggle-btn.active{ background:#fff;color:#0071e3;box-shadow:0 1px 4px rgba(0,0,0,.12); }
-        .pr-refresh{ padding:7px 8px;border-radius:9px;border:none;background:none;cursor:pointer;color:#86868b;display:flex;align-items:center;transition:color .15s; }
-        .pr-refresh:hover{ color:#0071e3; }
-
-        /* ── view container ── */
-        .pr-view{ transition:opacity .2s ease,transform .2s ease; }
-        .pr-view.exit{ opacity:0;transform:translateY(5px) scale(.99);pointer-events:none; }
-
-        /* ══ TABLA ══ */
-        .pr-table-wrap{
-          background:#fff; border:1px solid rgba(0,0,0,.08);
-          border-radius:16px; overflow:hidden;
-          box-shadow:0 2px 14px rgba(0,0,0,.06);
+        /* ── Toolbar ── */
+        .pr-toolbar {
+          background:#ffffff;
+          border:1px solid #dce3ec;
+          border-radius:14px;
+          padding:8px 10px; display:flex; gap:7px; align-items:center;
+          margin-bottom:10px; box-shadow:0 4px 12px rgba(15,23,42,.08);
+          flex-wrap:wrap;
         }
-        .pr-table{ width:100%; border-collapse:collapse; }
-        .pr-thead{ background:#fafafa; border-bottom:1.5px solid rgba(0,0,0,.07); }
-        .pr-th{ font-size:11px;font-weight:600;color:#86868b;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;user-select:none; }
-        .pr-th-btn{
-          display:flex;align-items:center;gap:5px;
-          padding:12px 16px; cursor:pointer; width:100%;
-          background:none;border:none;font-family:inherit;
-          font-size:11px;font-weight:600;color:inherit;text-transform:uppercase;letter-spacing:.08em;
-          transition:color .15s,background .15s;white-space:nowrap;
+        .pr-search-wrap { flex:1; min-width:180px; position:relative; }
+        .pr-search {
+          width:100%; background:#ffffff; border:1.5px solid #dce3ec; border-radius:11px;
+          padding:8px 12px 8px 38px; font-size:12.5px; color:#1e293b; outline:none;
+          font-family:inherit; transition:all .25s;
         }
-        .pr-th-btn:hover{ color:#1d1d1f;background:rgba(0,0,0,.03); }
-        .pr-th-btn.sorted{ color:#0071e3; }
-        .pr-th:first-child .pr-th-btn{ padding-left:20px; }
-        .pr-th-btn.no-sort{ cursor:default; }
-        .pr-th-btn.no-sort:hover{ color:#86868b;background:none; }
+        .pr-search::placeholder { color:#b8bcc8; }
+        .pr-search:focus { background:#fff; border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.24); }
 
-        .pr-tr{
-          border-bottom:1px solid rgba(0,0,0,.05);
+        .pr-toolbar-btn {
+          padding:8px 12px; border-radius:12px; border:1px solid #dce3ec;
+          background:#ffffff; cursor:pointer; color:#64748b;
+          display:flex; align-items:center; transition:background .18s ease, color .18s ease, box-shadow .18s ease;
+          font-family:inherit; flex-shrink:0;
+        }
+        .pr-toolbar-btn:hover { background:#e7edf3; color:#334155; box-shadow:0 4px 14px rgba(51,65,85,.18); }
+        .pr-toolbar-count { font-size:12px; color:#64748b; font-weight:700; white-space:nowrap; background:#ffffff; border:1px solid #dce3ec; padding:8px 12px; border-radius:12px; flex-shrink:0; }
+        .pr-filter-pill {
+          display:inline-flex; align-items:center; padding:8px 14px;
+          border-radius:12px; border:1px solid #dce3ec; background:#ffffff;
+          font-size:12px; font-weight:700; color:#64748b; cursor:pointer;
+          transition:background .18s ease, color .18s ease, box-shadow .18s ease;
+          white-space:nowrap; font-family:inherit; flex-shrink:0;
+        }
+        .pr-filter-pill:hover { background:rgba(0,0,0,.1); color:#1e293b; }
+        .pr-filter-pill.active { color:#fff; background:#64748b; box-shadow:0 4px 14px rgba(51,65,85,.32); }
+
+        /* ── Table ── */
+        .pr-table-wrap {
+          background:linear-gradient(180deg,#fbfdff 0%,#f6f9fc 100%);
+          border:1px solid #d7dfe8;
+          border-radius:18px;
+          overflow:hidden;
+          box-shadow:0 16px 30px rgba(15,23,42,.08), 0 4px 12px rgba(15,23,42,.05);
+        }
+        .pr-table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .pr-table { width:100%; border-collapse:separate; border-spacing:0; min-width:920px; }
+        .pr-thead { background:#eef3f8; }
+        .pr-thead tr th:first-child { border-radius:18px 0 0 0; }
+        .pr-thead tr th:last-child  { border-radius:0 18px 0 0; }
+        .pr-th {
+          font-size:10px; font-weight:800; color:#94a3b8;
+          text-transform:uppercase; letter-spacing:.12em;
+          white-space:nowrap; user-select:none;
+          border-right:1px solid #dde5ee;
+          border-bottom:1px solid #dbe4ee;
+        }
+        .pr-th:first-child { border-left:none; }
+        .pr-th:last-child { border-right:none; }
+        .pr-th-btn {
+          display:flex; align-items:center; gap:5px;
+          padding:11px 12px; cursor:pointer; width:100%;
+          background:none; border:none; font-family:inherit;
+          font-size:10px; font-weight:800; color:inherit;
+          text-transform:uppercase; letter-spacing:.12em;
+          transition:color .2s; white-space:nowrap;
+        }
+        .pr-th-btn:hover { color:#1e293b; }
+        .pr-th-btn.sorted { color:#64748b; }
+        .pr-th-btn.no-sort { cursor:default; }
+        .pr-th-btn.no-sort:hover { color:#94a3b8; }
+
+        .pr-tr {
           cursor:pointer;
-          transition:background .1s;
-          animation:prRowIn .28s ease both;
+          transition:none;
+          animation:none;
+          transform-origin:center;
+          will-change:auto;
         }
-        .pr-tr:nth-child(even){ background:#fafafa; }
-        .pr-tr:last-child{ border-bottom:none; }
-        .pr-tr:hover{ background:#f0f6ff!important; }
-        .pr-tr:hover .pr-act{ opacity:1; }
-        .pr-td{ padding:11px 16px;font-size:13px;color:#1d1d1f;vertical-align:middle; }
-        .pr-td:first-child{ padding-left:20px; }
-
-        .pr-av{ width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.15); }
-        .pr-name-cell{ display:flex;align-items:center;gap:11px; }
-        .pr-name-txt{ font-weight:600;font-size:13px;color:#1d1d1f; }
-
-        .pr-badge-cc{ display:inline-block;padding:3px 9px;border-radius:6px;background:#f0f6ff;color:#0071e3;font-size:11px;font-weight:600;border:1px solid rgba(0,113,227,.15);letter-spacing:.04em; }
-        .pr-badge-age{ display:inline-block;padding:3px 9px;border-radius:6px;background:#f5f5f7;color:#3d3d40;font-size:11px;font-weight:600;border:1px solid rgba(0,0,0,.08); }
-        .pr-badge-ok{ display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:600;border:1px solid rgba(22,163,74,.15); }
-        .pr-badge-ok::before{ content:'';width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e; }
-
-        .pr-act{ opacity:0;transition:opacity .12s;display:flex;align-items:center;gap:4px; }
-        .pr-act-btn{ padding:4px 11px;border-radius:6px;border:1px solid rgba(0,0,0,.1);background:#fff;font-size:11px;font-weight:500;color:#1d1d1f;cursor:pointer;font-family:'Geist',sans-serif;transition:all .12s; }
-        .pr-act-btn:hover{ background:#f0f6ff;color:#0071e3;border-color:#0071e3; }
-
-        .pr-rn{ font-size:11px;color:#c0c0c5;font-family:'Geist Mono',monospace;text-align:right;padding-right:8px;user-select:none; }
-        .pr-tfoot{ padding:10px 20px;border-top:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;background:#fafafa; }
-
-        /* ══ CARPETAS ══ */
-        .pr-folders-grid{
+        .pr-tr:hover {
+          filter:none;
+        }
+        .pr-td {
+          padding:9px 12px; font-size:12.5px; color:#334155; vertical-align:middle;
+          border-right:1px solid #e7edf4;
+          border-bottom:1px solid #e7edf4;
+          background:#fbfdff;
+          white-space:nowrap;
+          transition:none;
+        }
+        .pr-tr:nth-child(even) .pr-td,
+        .pr-tr:nth-child(even) .pr-col-index { background:#f7fafd; }
+        .pr-tr:hover .pr-td,
+        .pr-tr:hover .pr-col-index {
+          background:#eef2f6;
+        }
+        .pr-col-index { width:48px; }
+        .pr-col-patient { min-width:214px; }
+        .pr-col-document { width:136px; }
+        .pr-col-contact { min-width:160px; }
+        .pr-col-age { width:74px; text-align:center; }
+        .pr-col-rh { width:62px; text-align:center; }
+        .pr-col-date { width:128px; }
+        .pr-col-city { width:116px; }
+        .pr-col-address { width:122px; }
+        .pr-col-status { width:96px; text-align:center; }
+        .pr-col-address .pr-cell-text,
+        .pr-col-city .pr-cell-text,
+        .pr-col-contact .pr-cell-text {
+          display:block;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .pr-contact-stack {
           display:grid;
-          grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
-          gap:14px;
-          align-items:start;
+          gap:2px;
         }
-        .pr-folder-item{ cursor:pointer; }
-        .pr-folder-item{ animation:prFolderIn .42s cubic-bezier(.34,1.56,.64,1) both; }
+        .pr-td:first-child { border-left:none; }
+        .pr-td:last-child { border-right:none; }
+        .pr-tr:last-child .pr-td { border-bottom:none; }
+        .pr-tr:last-child td:first-child { border-radius:0 0 0 18px; }
+        .pr-tr:last-child td:last-child  { border-radius:0 0 18px 0; }
 
-        .pr-folder-card{
-          background:#fff; border:1px solid rgba(0,0,0,.08);
-          border-radius:18px; padding:20px 18px 16px;
-          box-shadow:0 1px 5px rgba(0,0,0,.05);
-          transition:all .22s cubic-bezier(.4,0,.2,1);
-          position:relative; overflow:hidden;
+        .pr-av {
+          width:34px; height:34px; border-radius:11px;
+          display:flex; align-items:center; justify-content:center;
+          font-weight:800; font-size:11px; color:#fff; flex-shrink:0;
+          transition:none;
+          box-shadow:0 3px 10px rgba(0,0,0,.14);
         }
-        .pr-folder-card::after{
-          content:''; position:absolute; inset:0;
-          background:linear-gradient(135deg,rgba(0,113,227,.04) 0%,transparent 60%);
-          opacity:0; transition:opacity .22s;
-        }
-        .pr-folder-item:hover .pr-folder-card{
-          border-color:rgba(0,113,227,.4);
-          box-shadow:0 8px 30px rgba(0,113,227,.14);
-          transform:translateY(-4px);
-        }
-        .pr-folder-item:hover .pr-folder-card::after{ opacity:1; }
-        .pr-folder-item:hover .pr-folder-svg{ transform:scale(1.07) rotate(-3deg); }
+        .pr-tr:hover .pr-av { transform:none; }
+        .pr-name-cell { display:flex; align-items:center; gap:10px; }
+        .pr-name-main { font-weight:700; font-size:12px; color:#334155; line-height:1.2; }
+        .pr-name-sub { font-size:10px; color:#94a3b8; margin-top:2px; font-family:'JetBrains Mono','SF Mono',monospace; }
 
-        .pr-folder-svg{
-          display:block; margin-bottom:14px;
-          transition:transform .22s cubic-bezier(.34,1.56,.64,1);
-          filter:drop-shadow(0 4px 10px rgba(0,0,0,.13));
+        .pr-badge {
+          display:inline-flex; align-items:center; gap:5px;
+          padding:3px 9px; border-radius:8px;
+          font-size:10px; font-weight:700;
         }
-        .pr-folder-name{ font-size:17px;font-weight:700;color:#1d1d1f;letter-spacing:-.01em;margin-bottom:3px; }
-        .pr-folder-sub{ font-size:11px;color:#86868b;font-weight:500; }
+        .pr-badge-doc { background:#e9eef4; color:#475569; border:1px solid #d1dae5; }
+        .pr-badge-age { background:#f1f5f9; color:#475569; }
+        .pr-badge-active { background:#f0fdf4; color:#059669; }
+        .pr-badge-active::before {
+          content:''; width:6px; height:6px; border-radius:50%;
+          background:#10b981; display:inline-block;
+          box-shadow:0 0 6px rgba(16,185,129,.5);
+        }
 
-        /* panel deslizante */
-        .pr-panel{
-          max-height:0; opacity:0; margin-top:0; overflow:hidden;
-          transition:max-height .38s cubic-bezier(.4,0,.2,1),
-                      opacity   .28s ease,
-                      margin    .3s ease;
+        .pr-contact {
+          font-size:10.5px;
+          color:#64748b;
+          display:flex;
+          align-items:center;
+          gap:4px;
+          min-width:0;
+          line-height:1.15;
+          white-space:nowrap;
         }
-        .pr-panel.open{ max-height:800px; opacity:1; margin-top:10px; }
-        .pr-panel-inner{
-          background:#fff; border:1px solid rgba(0,0,0,.08);
-          border-radius:14px; overflow:hidden;
-          box-shadow:0 6px 24px rgba(0,0,0,.1);
+        .pr-contact svg {
+          flex-shrink:0;
         }
-        .pr-file{
-          display:flex;align-items:center;gap:11px;
-          padding:11px 16px; border-bottom:1px solid rgba(0,0,0,.05);
-          cursor:pointer; transition:background .1s;
+        .pr-contact-text {
+          min-width:0;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+          display:block;
         }
-        .pr-file:last-child{ border-bottom:none; }
-        .pr-file:hover{ background:#f0f6ff; }
-        .pr-file:hover .pr-file-arrow{ opacity:1;transform:translateX(0); }
-        .pr-file-av{ width:32px;height:32px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.14); }
-        .pr-file-name{ font-size:13px;font-weight:600;color:#1d1d1f;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-        .pr-file-meta{ font-size:11px;color:#86868b;margin-top:1px; }
-        .pr-file-arrow{ opacity:0;transform:translateX(-4px);color:#0071e3;transition:all .14s;font-size:16px;line-height:1; }
+        .pr-date { font-size:11px; color:#94a3b8; }
 
-        /* ── empty ── */
-        .pr-empty{ background:#fff;border:1.5px dashed rgba(0,0,0,.1);border-radius:20px;padding:72px 20px;text-align:center; }
+        /* Actions */
+        .pr-actions-cell { position:relative; }
+        .pr-actions-trigger {
+          width:34px; height:34px; border-radius:11px; border:none;
+          background:rgba(27,161,216,.09); cursor:pointer; color:#1ba1d8;
+          display:flex; align-items:center; justify-content:center;
+          transition:all .22s; font-family:inherit;
+        }
+        .pr-actions-trigger:hover { background:rgba(27,161,216,.18); }
+        .pr-actions-menu {
+          position:absolute; right:0; top:calc(100% + 6px);
+          background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:16px;
+          box-shadow:0 20px 48px rgba(0,0,0,.12); width:200px;
+          z-index:200; padding:6px;
+          animation:none;
+        }
+        .pr-actions-item {
+          width:100%; display:flex; align-items:center; gap:10px;
+          padding:9px 13px; border:none; background:transparent;
+          font-size:13px; color:#1e293b; cursor:pointer; border-radius:10px;
+          font-family:inherit; transition:all .15s; text-align:left;
+        }
+        .pr-actions-item:hover { background:#f8fafc; }
+        .pr-actions-item.danger { color:#ef4444; }
+        .pr-actions-item.danger:hover { background:#fef2f2; }
+        .pr-actions-sep { height:1px; background:#f8fafc; margin:4px 8px; }
 
-        /* ── error ── */
-        .pr-err{ background:#fff5f5;border:1px solid rgba(220,38,38,.18);border-radius:14px;padding:14px 18px;display:flex;align-items:flex-start;gap:10px;color:#dc2626; }
+        /* Footer */
+        .pr-tfoot {
+          padding:11px 20px; border-top:1px solid #e2e8f0;
+          display:flex; align-items:center; justify-content:space-between;
+          background:#f3f7fb;
+        }
+        .pr-tfoot-text { font-size:12px; color:#94a3b8; font-weight:500; }
+
+        /* Empty / Error */
+        .pr-empty {
+          background:#fff; border:2px dashed #e2e8f0; border-radius:22px;
+          padding:80px 20px; text-align:center;
+          box-shadow:0 4px 16px rgba(0,0,0,.03);
+        }
+        .pr-err {
+          background:#fef2f2; border:1px solid #fecaca; border-radius:16px;
+          padding:16px 20px; display:flex; align-items:flex-start; gap:12px;
+          margin-bottom:20px;
+        }
       `}</style>
 
       <div className="pr">
-        <div style={{maxWidth:1280,margin:'0 auto',display:'flex',flexDirection:'column',gap:20}}>
+        <div style={{maxWidth:1300,margin:'0 auto'}}>
 
           {/* ══ HEADER ══ */}
-          <div className="pr-fade-up" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+          <div className="pr-header pr-slide">
             <div>
-              <p style={{fontSize:10,fontWeight:700,letterSpacing:'.16em',textTransform:'uppercase',color:'#0071e3',opacity:.8,marginBottom:5}}>Sistema Clínico</p>
-              <h1 style={{fontSize:34,fontWeight:700,color:'#1d1d1f',letterSpacing:'-.025em',lineHeight:1}}>Pacientes</h1>
+              <p style={{fontSize:12,fontWeight:600,color:'#94a3b8',marginBottom:8}}>
+                Gestion de Pacientes
+              </p>
+              <h1 style={{fontSize:34,fontWeight:800,color:'#1e293b',letterSpacing:'-.04em',lineHeight:1,margin:0}}>
+                Directorio Clinico
+              </h1>
             </div>
             <button className="pr-btn-new" onClick={()=>setIsWizardOpen(true)}>
-              <UserPlus size={15} strokeWidth={2.5}/> Nuevo Paciente
+              <UserPlus size={18} strokeWidth={2.2}/> Nuevo Paciente
             </button>
           </div>
 
           {/* ══ ERROR ══ */}
           {errorSync && (
-            <div className="pr-err pr-fade-up">
-              <AlertTriangle size={16} style={{flexShrink:0,marginTop:1}}/>
+            <div className="pr-err pr-slide">
+              <AlertTriangle size={20} style={{color:'#ef4444',flexShrink:0,marginTop:1}}/>
               <div style={{flex:1}}>
-                <p style={{fontSize:13,fontWeight:500,lineHeight:1.5,marginBottom:8}}>Error de sincronización: {errorSync}</p>
-                <div style={{display:'flex',gap:8}}>
-                  <button
-                    onClick={testConnection}
-                    style={{fontSize:11,padding:'4px 8px',background:'#0071e3',color:'white',border:'none',borderRadius:6,cursor:'pointer'}}
-                  >
-                    Probar Conexión
+                <p style={{fontSize:14,fontWeight:700,color:'#991b1b',marginBottom:8}}>Error de sincronizacion</p>
+                <p style={{fontSize:13,color:'#b91c1c',lineHeight:1.6,marginBottom:12}}>{errorSync}</p>
+                <div style={{display:'flex',gap:10}}>
+                  <button onClick={testConnection} style={{fontSize:13,padding:'8px 18px',background:'#fff',border:'1.5px solid #fecaca',borderRadius:12,cursor:'pointer',fontWeight:600,color:'#1e293b',fontFamily:'inherit',transition:'all .2s'}}>
+                    Probar Conexion
                   </button>
-                  <button
-                    onClick={fetchPatients}
-                    style={{fontSize:11,padding:'4px 8px',background:'#16a34a',color:'white',border:'none',borderRadius:6,cursor:'pointer'}}
-                  >
+                  <button onClick={fetchPatients} style={{fontSize:13,padding:'8px 18px',background:'#1ba1d8',border:'none',borderRadius:12,cursor:'pointer',fontWeight:600,color:'#fff',fontFamily:'inherit',transition:'all .2s'}}>
                     Reintentar
                   </button>
                 </div>
@@ -786,34 +1007,36 @@ export const PatientRadar = () => {
           )}
 
           {/* ══ STATS ══ */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <div className="pr-stats">
             {[
-              {label:'Total Pacientes',value:patients.length,
-               icon:<Users size={20} strokeWidth={1.8} style={{stroke:'#0071e3'}}/>,bg:'rgba(0,113,227,.08)',delay:'.05s'},
-              {label:'Activos',value:activeCount,
-               icon:<UserCheck size={20} strokeWidth={1.8} style={{stroke:'#16a34a'}}/>,bg:'rgba(22,163,74,.08)',delay:'.1s'},
-            ].map(s=>(
-              <div key={s.label} className="pr-stat pr-fade-up" style={{animationDelay:s.delay}}>
-                <div>
-                  <p style={{fontSize:9,fontWeight:700,letterSpacing:'.16em',textTransform:'uppercase',color:'#86868b',marginBottom:8}}>{s.label}</p>
-                  <p style={{fontSize:40,fontWeight:700,color:'#1d1d1f',lineHeight:1,letterSpacing:'-.02em',fontVariantNumeric:'tabular-nums'}}>{s.value}</p>
+              { label:'Total Registrados',  value:patients.length, icon:<Users size={16}/>, color:'#64748b', delay:'.06s' },
+              { label:'Pacientes Activos',   value:activeCount, icon:<UserCheck size={16}/>, color:'#64748b', delay:'.12s' },
+              { label:'Registros Hoy', value:patients.filter(p=>{ try{return new Date(p.creado_en).toDateString()===new Date().toDateString();}catch{return false;}}).length, icon:<Calendar size={16}/>, color:'#64748b', delay:'.18s' },
+              { label:'Con Telefono', value:patients.filter(p=>p.telefono).length, icon:<Phone size={16}/>, color:'#64748b', delay:'.24s' },
+            ].map(s => (
+              <div key={s.label} className="pr-stat-card pr-scale" style={{animationDelay:s.delay}}>
+                <div className="pr-stat-icon" style={{color:s.color}}>{s.icon}</div>
+                <div className="pr-stat-body">
+                  <div className="pr-stat-val">{s.value}</div>
+                  <div className="pr-stat-lbl">{s.label}</div>
                 </div>
-                <div style={{width:46,height:46,borderRadius:13,background:s.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.icon}</div>
               </div>
             ))}
           </div>
 
           {/* ══ TOOLBAR ══ */}
-          <div className="pr-toolbar pr-fade-up" style={{animationDelay:'.15s'}}>
-            <div style={{flex:1,position:'relative'}}>
-              <Search size={14} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',stroke:'#a1a1a6',pointerEvents:'none'}}/>
-              <input type="text" placeholder="Buscar por nombre o documento…" className="pr-si" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/>
+          <div className="pr-toolbar pr-slide" style={{animationDelay:'.28s'}}>
+            <div className="pr-search-wrap">
+              <Search size={15} style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#b8bcc8',pointerEvents:'none'}}/>
+              <input type="text" placeholder="Buscar paciente por nombre, documento..." className="pr-search" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/>
             </div>
-            <div className="pr-toggle-wrap">
-              <button className={`pr-toggle-btn ${viewMode==='table'  ?'active':''}`} onClick={()=>handleViewChange('table')}   title="Tabla"><List size={15}/></button>
-              <button className={`pr-toggle-btn ${viewMode==='folders'?'active':''}`} onClick={()=>handleViewChange('folders')} title="Carpetas"><Grid3x3 size={15}/></button>
-            </div>
-            <button className="pr-refresh" title="Actualizar" onClick={e=>{
+            {(['todos','activo','hoy'] as const).map(f => (
+              <button key={f} className={`pr-filter-pill${filtroEstado===f?' active':''}`}
+                onClick={()=>setFiltroEstado(f)}>
+                {f==='todos'?'Todos':f==='activo'?'Activos':'Hoy'}
+              </button>
+            ))}
+            <button className="pr-toolbar-btn" title="Actualizar" onClick={e=>{
               const svg=e.currentTarget.querySelector('svg');
               svg?.classList.remove('pr-spin-once');
               void (svg as any)?.offsetWidth;
@@ -822,180 +1045,112 @@ export const PatientRadar = () => {
             }}>
               <RefreshCcw size={15}/>
             </button>
-            <span style={{fontSize:11,color:'#a1a1a6',fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
-              {filteredPatients.length} resultado{filteredPatients.length!==1?'s':''}
+            <span className="pr-toolbar-count">
+              {filteredPatients.length} / {patients.length}
             </span>
           </div>
 
-          {/* ══ CONTENIDO ══ */}
+          {/* ══ CONTENT ══ */}
           {loading ? (
-            <div style={{height:240,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
-              <Loader2 size={30} className="pr-spin" style={{stroke:'#0071e3'}}/>
-              <span style={{fontSize:10,fontWeight:700,letterSpacing:'.14em',textTransform:'uppercase',color:'#a1a1a6'}}>Cargando…</span>
+            <div style={{height:340,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16}}>
+              <Loader2 size={32} className="pr-spin" style={{color:'#1ba1d8'}}/>
+              <span style={{fontSize:13,fontWeight:600,color:'#b8bcc8'}}>Cargando pacientes...</span>
             </div>
 
           ) : filteredPatients.length===0&&!errorSync ? (
-            <div className="pr-empty pr-fade-up">
-              <div style={{width:52,height:52,borderRadius:15,background:'#f5f5f7',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}>
-                <Users size={24} style={{stroke:'#c0c0c5'}}/>
+            <div className="pr-empty pr-slide">
+              <div style={{width:60,height:60,borderRadius:20,background:'linear-gradient(135deg,#f5f6f8,#eef0f2)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
+                <Users size={28} style={{color:'#b8bcc8'}}/>
               </div>
-              <p style={{color:'#3d3d40',fontWeight:600,fontSize:15}}>Sin pacientes</p>
-              <p style={{color:'#a1a1a6',fontSize:13,marginTop:5}}>Agrega el primero con "Nuevo Paciente"</p>
+              <p style={{color:'#1e293b',fontWeight:700,fontSize:18,marginBottom:6}}>Sin pacientes registrados</p>
+              <p style={{color:'#b8bcc8',fontSize:14}}>Presiona "Nuevo Paciente" para agregar el primero.</p>
             </div>
 
           ) : (
-            <div className={`pr-view${viewChanging?' exit':''}`}>
-
-              {/* ───── TABLA ───── */}
-              {viewMode==='table'&&(
-                <div className="pr-table-wrap pr-fade-up" style={{animationDelay:'.2s'}}>
-                  <table className="pr-table">
-                    <thead className="pr-thead">
-                      <tr>
-                        <th className="pr-th" style={{width:44}}><button className="pr-th-btn no-sort" style={{paddingLeft:20,paddingRight:8}}><span className="pr-rn" style={{padding:0}}>#</span></button></th>
-                        <th className="pr-th" style={{width:'30%'}}>
-                          <button className={`pr-th-btn${sortField==='nombre'?' sorted':''}`} onClick={()=>handleSort('nombre')}>Paciente <SortIcon field="nombre"/></button>
-                        </th>
-                        <th className="pr-th">
-                          <button className={`pr-th-btn${sortField==='cc'?' sorted':''}`} onClick={()=>handleSort('cc')}>Documento <SortIcon field="cc"/></button>
-                        </th>
-                        <th className="pr-th">
-                          <button className={`pr-th-btn${sortField==='telefono'?' sorted':''}`} onClick={()=>handleSort('telefono')}>Teléfono <SortIcon field="telefono"/></button>
-                        </th>
-                        <th className="pr-th">
-                          <button className={`pr-th-btn${sortField==='email'?' sorted':''}`} onClick={()=>handleSort('email')}>Email <SortIcon field="email"/></button>
-                        </th>
-                        <th className="pr-th">
-                          <button className={`pr-th-btn${sortField==='edad'?' sorted':''}`} onClick={()=>handleSort('edad')}>Edad <SortIcon field="edad"/></button>
-                        </th>
-                        <th className="pr-th">
-                          <button className={`pr-th-btn${sortField==='creado_en'?' sorted':''}`} onClick={()=>handleSort('creado_en')}>Registrado <SortIcon field="creado_en"/></button>
-                        </th>
-                        <th className="pr-th"><button className="pr-th-btn no-sort">Estado</button></th>
-                        <th className="pr-th"><button className="pr-th-btn no-sort">Acciones</button></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPatients.map((p,i)=>{
-                        const [c1,c2]=grad(String(p?.nombre||'')+String(p?.apellidos||''));
-                        return (
-                          <tr key={p?.id||i} className="pr-tr" style={{animationDelay:`${Math.min(i,14)*0.028}s`}} onClick={()=>p&&setSelectedPatient(p)} onContextMenu={(event)=>handleContextMenu(event,p)}>
-                            <td className="pr-td pr-rn" style={{width:44,paddingLeft:20}}>{i+1}</td>
-                            <td className="pr-td">
-                              <div className="pr-name-cell">
-                                <div className="pr-av" style={{background:`linear-gradient(135deg,${c1},${c2})`}}>{ini(p?.nombre,p?.apellidos)}</div>
-                                <span className="pr-name-txt">{p?.nombre||'—'} {p?.apellidos||''}</span>
-                              </div>
-                            </td>
-                            <td className="pr-td"><span className="pr-badge-cc pr-mono">{p?.cc||'—'}</span></td>
-                            <td className="pr-td">{p?.telefono||'—'}</td>
-                            <td className="pr-td">{p?.email||'—'}</td>
-                            <td className="pr-td">{p?.edad !== undefined && p?.edad !== null ? <span className="pr-badge-age">{p.edad} años</span> : (calculateAge(p?.fecha_nacimiento) !== null ? <span className="pr-badge-age">{calculateAge(p.fecha_nacimiento)} años</span> : <span style={{color:'#c0c0c5'}}>—</span>)}</td>
-                            <td className="pr-td" style={{color:'#86868b',fontSize:12,fontVariantNumeric:'tabular-nums'}}>{fmtDate(p?.creado_en)}</td>
-                            <td className="pr-td"><span className="pr-badge-ok">Activo</span></td>
-                            <td className="pr-td">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setConfirmDeleteId(p.id);
-                                }}
-                                style={{
-                                  padding: '6px 10px',
-                                  background: '#EF4444',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  color: '#fff',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  transition: 'all .15s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#DC2626'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = '#EF4444'}
-                              >
-                                <Trash2 size={12} /> Eliminar
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  <div className="pr-tfoot">
-                    <span style={{fontSize:11,color:'#86868b',fontVariantNumeric:'tabular-nums'}}>{filteredPatients.length} de {patients.length} pacientes</span>
-                    <span style={{fontSize:11,color:'#c0c0c5'}}>
-                      Ordenado por {sortField==='nombre'?'nombre':sortField==='edad'?'edad':sortField==='cc'?'documento':'fecha'} · {sortDir==='asc'?'↑':'↓'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* ───── CARPETAS ───── */}
-              {viewMode==='folders'&&(
-                <div className="pr-folders-grid pr-fade-up" style={{animationDelay:'.2s'}}>
-                  {folderGroups.map(([letter,group],gi)=>{
-                    const isOpen=openFolder===letter;
-                    const [fc1,fc2]=grad(letter+letter+letter);
+            <div className="pr-table-wrap pr-slide" style={{animationDelay:'.30s'}}>
+              <div className="pr-table-scroll">
+              <table className="pr-table">
+                <thead className="pr-thead">
+                  <tr>
+                    <th className="pr-th pr-col-index" style={{width:48}}>
+                      <span style={{padding:'12px 12px',display:'block',fontSize:10,fontWeight:800,color:'#94a3b8',letterSpacing:'.12em'}}>#</span>
+                    </th>
+                    <th className="pr-th pr-col-patient" style={{minWidth:240}}>
+                      <button className={`pr-th-btn${sortField==='nombre'?' sorted':''}`} onClick={()=>handleSort('nombre')}>Paciente <SortIcon field="nombre"/></button>
+                    </th>
+                    <th className="pr-th pr-col-document">
+                      <button className={`pr-th-btn${sortField==='cc'?' sorted':''}`} onClick={()=>handleSort('cc')}>Documento <SortIcon field="cc"/></button>
+                    </th>
+                    <th className="pr-th pr-col-contact">
+                      <button className={`pr-th-btn${sortField==='telefono'?' sorted':''}`} onClick={()=>handleSort('telefono')}>Contacto <SortIcon field="telefono"/></button>
+                    </th>
+                    <th className="pr-th pr-col-age">
+                      <button className={`pr-th-btn${sortField==='edad'?' sorted':''}`} onClick={()=>handleSort('edad')}>Edad <SortIcon field="edad"/></button>
+                    </th>
+                    <th className="pr-th pr-col-rh">
+                      <button className="pr-th-btn no-sort">RH</button>
+                    </th>
+                    <th className="pr-th pr-col-date">
+                      <button className={`pr-th-btn${sortField==='creado_en'?' sorted':''}`} onClick={()=>handleSort('creado_en')}>Registro <SortIcon field="creado_en"/></button>
+                    </th>
+                    <th className="pr-th pr-col-city">
+                      <button className="pr-th-btn no-sort">Ciudad</button>
+                    </th>
+                    <th className="pr-th pr-col-address">
+                      <button className="pr-th-btn no-sort">Dirección</button>
+                    </th>
+                    <th className="pr-th pr-col-status">
+                      <button className="pr-th-btn no-sort">Estado</button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPatients.map((p,i)=>{
+                    const age = p?.edad !== undefined && p?.edad !== null ? p.edad : calculateAge(p?.fecha_nacimiento);
                     return (
-                      <div key={letter} className="pr-folder-item" style={{animationDelay:`${gi*0.045}s`}}>
-                        {/* Tarjeta carpeta */}
-                        <div className="pr-folder-card" onClick={()=>setOpenFolder(isOpen?null:letter)}>
-                          {/* Ícono SVG folder */}
-                          <svg className="pr-folder-svg" width="60" height="46" viewBox="0 0 60 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            {/* sombra */}
-                            <rect x="3" y="12" width="54" height="33" rx="6" fill="rgba(0,0,0,.09)"/>
-                            {/* back panel */}
-                            <rect x="0" y="10" width="54" height="34" rx="6" fill={fc1} opacity=".3"/>
-                            {/* tab */}
-                            <path d={`M0 16 Q0 10 6 10 L20 10 Q25 10 27 14 L60 14 L60 16 Z`} fill={fc1} opacity=".55"/>
-                            {/* front */}
-                            <rect x="0" y="14" width="60" height="32" rx="6" fill={fc2}/>
-                            {/* highlight streak */}
-                            <rect x="7" y="20" width="20" height="3" rx="1.5" fill="rgba(255,255,255,.38)"/>
-                            {/* count badge */}
-                            <rect x="43" y="20" width="11" height="11" rx="5.5" fill="rgba(255,255,255,.28)"/>
-                            <text x="48.5" y="29.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="rgba(255,255,255,.95)" fontFamily="'Geist',system-ui,sans-serif">{group.length}</text>
-                            {/* líneas decorativas dentro */}
-                            <rect x="7" y="27" width="30" height="2" rx="1" fill="rgba(255,255,255,.18)"/>
-                            <rect x="7" y="33" width="22" height="2" rx="1" fill="rgba(255,255,255,.13)"/>
-                          </svg>
-                          <div className="pr-folder-name">{letter} ···</div>
-                          <div className="pr-folder-sub">{group.length} paciente{group.length!==1?'s':''} · {isOpen?'cerrar':'abrir'}</div>
-                        </div>
-
-                        {/* Panel deslizante animado */}
-                        <div className={`pr-panel${isOpen?' open':''}`}>
-                          <div className="pr-panel-inner">
-                            {group.map((p,pi)=>{
-                              const [a1,a2]=grad(String(p?.nombre||'')+String(p?.apellidos||''));
-                              return (
-                                <div key={p?.id||pi} className="pr-file" onClick={()=>p&&setSelectedPatient(p)}>
-                                  <div className="pr-file-av" style={{background:`linear-gradient(135deg,${a1},${a2})`}}>{ini(p?.nombre,p?.apellidos)}</div>
-                                  <div style={{flex:1,minWidth:0}}>
-                                    <div className="pr-file-name">{p?.nombre||'—'} {p?.apellidos||''}</div>
-                                    <div className="pr-file-meta">{formatPatientSerial(p?.id)} · CC {p?.cc||'—'} · {(p?.edad !== undefined && p?.edad !== null ? p.edad : (calculateAge(p?.fecha_nacimiento) ?? '—'))} años</div>
-                                  </div>
-                                  <span className="pr-file-arrow">›</span>
-                                </div>
-                              );
-                            })}
+                      <tr key={p?.id||i} className="pr-tr" style={{animationDelay:`${Math.min(i,25)*0.03}s`}} onClick={()=>p&&setSelectedPatient(p)} onContextMenu={(event)=>handleContextMenu(event,p)}>
+                        <td className="pr-col-index" style={{padding:'10px 12px',color:'#cbd5e1',fontSize:12,fontWeight:700,verticalAlign:'middle',width:48,borderRight:'1px solid #e7edf4'}}>{i+1}</td>
+                        <td className="pr-td pr-col-patient">
+                          <div className="pr-name-cell">
+                            <div className="pr-av" style={{background:'#adb5bd'}}>{ini(p?.nombre,p?.apellidos)}</div>
+                            <div>
+                              <div className="pr-name-main">{p?.nombre||'--'} {p?.apellidos||''}</div>
+                              <div className="pr-name-sub">{formatPatientSerial(p?.id)}</div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        </td>
+                        <td className="pr-td pr-col-document"><span className="pr-badge pr-badge-doc">{p?.cc||'--'}</span></td>
+                        <td className="pr-td pr-col-contact">
+                          <div className="pr-contact-stack">
+                            <div className="pr-contact"><Phone size={12}/><span className="pr-contact-text">{p?.telefono||'--'}</span></div>
+                            {p?.email && <div className="pr-contact"><Mail size={12}/><span className="pr-contact-text">{p.email}</span></div>}
+                          </div>
+                        </td>
+                        <td className="pr-td pr-col-age">{age !== null ? <span className="pr-badge pr-badge-age">{age} a.</span> : <span style={{color:'#cbd5e1'}}>--</span>}</td>
+                        <td className="pr-td pr-col-rh"><span className="pr-badge pr-badge-age">{formatPatientRh(p?.tipo_sangre_rh, '--')}</span></td>
+                        <td className="pr-td pr-col-date"><span className="pr-date">{fmtDate(p?.creado_en)}</span></td>
+                        <td className="pr-td pr-col-city"><span className="pr-cell-text" style={{fontSize:13,color:'#475569'}}>{p?.municipio_ciudad||'—'}</span></td>
+                        <td className="pr-td pr-col-address"><span className="pr-cell-text" style={{fontSize:13,color:'#475569'}}>{p?.direccion||'—'}</span></td>
+                        <td className="pr-td pr-col-status"><span className="pr-badge pr-badge-active">Activo</span></td>
+
+                      </tr>
                     );
                   })}
-                </div>
-              )}
-
+                </tbody>
+              </table>
+              </div>
+              <div className="pr-tfoot">
+                <span className="pr-tfoot-text">{filteredPatients.length} de {patients.length} pacientes</span>
+                <span className="pr-tfoot-text">
+                  Ordenado por {sortField==='nombre'?'nombre':sortField==='edad'?'edad':sortField==='cc'?'documento':sortField==='telefono'?'contacto':sortField==='email'?'email':'fecha'} {sortDir==='asc'?'(A-Z)':'(Z-A)'}
+                </span>
+              </div>
             </div>
           )}
         </div>
 
-        {/* ══ MODAL ══ */}
-        {isWizardOpen&&(
+        {/* ══ MODALS ══ */}
+        {isWizardOpen && (
           <NewPatientWizard onClose={()=>{ setIsWizardOpen(false); fetchPatients(); }}/>
         )}
 
@@ -1006,16 +1161,9 @@ export const PatientRadar = () => {
             patient={contextMenuState.patient}
             menuRef={menuRef}
             onClose={() => setContextMenuState(null)}
-            onView={() => {
-              setSelectedPatient(contextMenuState.patient);
-            }}
-            onEdit={() => {
-              setQuickEditPatient(contextMenuState.patient);
-              setQuickEditOpen(true);
-            }}
-            onDelete={() => {
-              setConfirmDeleteId(contextMenuState.patient.id);
-            }}
+            onView={() => { setSelectedPatient(contextMenuState.patient); }}
+            onEdit={() => { setQuickEditPatient(contextMenuState.patient); setQuickEditOpen(true); }}
+            onDelete={() => { setConfirmDeleteId(contextMenuState.patient.id); }}
           />
         )}
 
@@ -1045,13 +1193,14 @@ export const PatientRadar = () => {
               setConfirmDeleteId(null);
             } catch (error) {
               console.error('Error deleting patient:', error);
-              alert('Error al eliminar paciente');
+              setDeleteError('Error al eliminar paciente. Intente de nuevo.');
             } finally {
               setDeleting(false);
             }
           }}
           patientName={patients.find(p => p.id === confirmDeleteId)?.nombre + ' ' + patients.find(p => p.id === confirmDeleteId)?.apellidos || ''}
           deleting={deleting}
+          error={deleteError}
         />
       </div>
     </>

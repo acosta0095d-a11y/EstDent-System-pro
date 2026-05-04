@@ -1,52 +1,82 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { 
-  Activity, X, ChevronDown, ChevronUp,
-  Circle, Square, Triangle, Zap, Bone, Crosshair,
-  Droplet, Scissors, HelpCircle,
-  CheckCircle, AlertCircle, FileText,
-  Star, Heart, Shield, Award, Sun, Moon, Trash, RefreshCw,
-  PieChart, TrendingUp, Info,
-  RotateCcw, Download, Upload, Brush, Eye,
-  Pen, Clock, Calendar, Filter, Grid, Layers, Palette,
-  Smile, Meh, Frown, Thermometer, Pill, Syringe,
-  Stethoscope, Microscope, Camera, Video, Mic,
-  Music, Film, Image, Book, BookOpen, Clipboard,
-  Printer, Save, Copy, Scissors as ScissorsIcon
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { ConfirmDialog } from '../../../shared/components/Toast';
+import {
+  Activity, X, Circle, Square, Triangle, Zap, Bone, CheckCircle, AlertCircle, FileText, Trash, RefreshCw,
+  Info, Brush, LayoutGrid, Undo, Redo, PieChart, Layers, ClipboardList, TrendingUp, Target, Sparkles,
+  Shield, Heart, Award, Scissors, Star, Sun, Eye, Pen, Droplet, Clock, Download, Upload
 } from 'lucide-react';
 
 // ============================================
-// 1. CONFIGURACIÓN CLÍNICA PROFESIONAL
+// 1. CONFIGURACIÓN VISUAL PREMIUM (OrthoOdontogram)
 // ============================================
 
 const COLORS = {
-  pendiente: '#ef4444',
-  realizado: '#10b981',
-  externo: '#0f172a',
-  presupuesto: '#3b82f6',
-  ausente: '#cbd5e1',
-  healthy: '#ffffff',
-  caries: '#ef4444',
-  resina: '#3b82f6',
-  endodoncia: '#8b5cf6',
-  implante: '#6b7280',
-  corona: '#f59e0b',
-  extraccion: '#6b7280',
-  sellante: '#3b82f6',
-  primary: '#0071e3',
-  primaryLight: '#e0f2fe',
-  primaryDark: '#0284c7',
-  success: '#10b981',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#8b5cf6',
-  background: '#f8fafc',
-  surface: '#ffffff',
-  text: '#0f172a',
-  textLight: '#64748b',
-  border: '#cbd5e1'
+  pendiente: '#6B7280',
+  realizado: '#9CA3AF',
+  proceso: '#475569',
+  externo: '#4B5563',
+  presupuesto: '#D1D5DB',
+  healthy: '#FAFAFA',
+  caries: '#1E3A5F',
+  resina: '#2D3748',
+  endodoncia: '#1A365D',
+  implante: '#2B6CB0',
+  corona: '#9C4221',
+  extraccion: '#744210',
+  sellante: '#718096',
+  bracketMetal: '#1E3A5F',
+  bracketZafiro: '#2D3748',
+  bracketAutoligable: '#1A365D',
+  tubo: '#9C4221',
+  banda: '#744210',
+  modulo: '#97266D',
+  ligadura: '#4A5568',
+  boton: '#276749',
+  biteTurbo: '#C05621',
+  arco: '#2B6CB0',
+  cadeneta: '#6B46C1',
+  resorte: '#718096',
+  instalado: '#6B7280',
+  despegado: '#9CA3AF',
+  fracturado: '#D1D5DB',
+  planificado: '#9CA3AF',
+  retirado: '#E5E7EB',
+  ausente: '#F3F4F6',
+  primary: '#4B5563',
+  primaryLight: '#F9FAFB',
+  primaryDark: '#374151',
+  secondary: '#6B7280',
+  secondaryLight: '#F3F4F6',
+  error: '#EF4444',
+  errorLight: '#FEE2E2',
+  success: '#10B981',
+  successLight: '#D1FAE5',
+  text: '#1F2937',
+  textLight: '#6B7280',
+  textMuted: '#9CA3AF',
+  border: '#E5E7EB',
+  borderDark: '#D1D5DB',
+  background: '#F8FAFC',
+  cardBg: '#FFFFFF',
+  hoverBg: '#F3F4F6',
+  shadowSm: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+  shadowMd: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  shadowLg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+  shadowXl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+  shadowInner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
 };
 
 const STATES = [
+  { 
+    id: 'realizado', 
+    name: 'Revision Actual', 
+    color: COLORS.realizado, 
+    description: 'Hallazgo presente en la revisión actual',
+    longDescription: 'Hallazgo revisado en la sesión actual. Queda registrado en la bitácora clínica del paciente.',
+    icon: CheckCircle,
+    shortcut: 'Ctrl+1',
+    clinicalMeaning: 'Revision clínica actual'
+  },
   { 
     id: 'pendiente', 
     name: 'Pendiente', 
@@ -54,38 +84,8 @@ const STATES = [
     description: 'Patología / Requiere atención inmediata',
     longDescription: 'Caries activas, fracturas, lesiones que necesitan tratamiento urgente. El paciente presenta dolor o riesgo de complicaciones.',
     icon: AlertCircle,
-    shortcut: 'Ctrl+1',
-    clinicalMeaning: 'Diagnóstico pendiente de tratamiento'
-  },
-  { 
-    id: 'realizado', 
-    name: 'Realizado', 
-    color: COLORS.realizado, 
-    description: 'Tratamiento completado en esta clínica',
-    longDescription: 'El procedimiento fue realizado exitosamente. Queda registrado en el historial del paciente con fecha y hora.',
-    icon: CheckCircle,
     shortcut: 'Ctrl+2',
-    clinicalMeaning: 'Tratamiento finalizado'
-  },
-  { 
-    id: 'externo', 
-    name: 'Existente / Externo', 
-    color: COLORS.externo, 
-    description: 'Tratamiento realizado en otra clínica',
-    longDescription: 'El paciente ya tenía este tratamiento al llegar. Se registra como trabajo externo para mantener el historial completo.',
-    icon: Shield,
-    shortcut: 'Ctrl+3',
-    clinicalMeaning: 'Tratamiento previo de otra institución'
-  },
-  { 
-    id: 'presupuesto', 
-    name: 'Presupuesto', 
-    color: COLORS.presupuesto, 
-    description: 'Planificado / En espera de aprobación',
-    longDescription: 'Tratamiento cotizado pero aún no realizado. Pendiente de aprobación por el paciente o de programación.',
-    icon: FileText,
-    shortcut: 'Ctrl+4',
-    clinicalMeaning: 'En espera de autorización'
+    clinicalMeaning: 'Diagnóstico pendiente de tratamiento'
   }
 ];
 
@@ -95,71 +95,171 @@ const STATES = [
 
 const CLINICAL_TOOLS = [
   // Diagnóstico
-  { id: 'caries', name: 'Caries', icon: Circle, type: 'hallazgo', color: COLORS.caries, description: 'Lesión cariosa activa', category: 'Diagnóstico', detailed: 'Caries superficial, media o profunda' },
-  { id: 'caries_profunda', name: 'Caries Profunda', icon: Circle, type: 'hallazgo', color: '#b91c1c', description: 'Caries que afecta dentina profunda', category: 'Diagnóstico' },
-  { id: 'fractura', name: 'Fractura', icon: AlertCircle, type: 'hallazgo', color: '#f97316', description: 'Fractura dental', category: 'Diagnóstico' },
-  { id: 'abrasion', name: 'Abrasión', icon: AlertCircle, type: 'hallazgo', color: '#94a3b8', description: 'Desgaste dental por cepillado', category: 'Diagnóstico' },
-  { id: 'atricion', name: 'Atrición', icon: AlertCircle, type: 'hallazgo', color: '#94a3b8', description: 'Desgaste por bruxismo', category: 'Diagnóstico' },
-  { id: 'erosion', name: 'Erosión', icon: AlertCircle, type: 'hallazgo', color: '#94a3b8', description: 'Pérdida de esmalte por ácidos', category: 'Diagnóstico' },
-  
+  { id: 'caries', name: 'Caries', icon: Circle, type: 'hallazgo', color: COLORS.caries, description: 'Lesión cariosa activa', category: 'Diagnóstico', detailed: 'Caries superficial, media o profunda', cie10: 'K02.1', cdt: 'D0145' },
+  { id: 'caries_profunda', name: 'Caries Profunda', icon: Circle, type: 'hallazgo', color: '#b91c1c', description: 'Caries que afecta dentina profunda', category: 'Diagnóstico', cie10: 'K02.9', cdt: 'D0220' },
+  { id: 'fractura', name: 'Fractura', icon: AlertCircle, type: 'hallazgo', color: '#f97316', description: 'Fractura dental', category: 'Diagnóstico', cie10: 'S02.5', cdt: 'D9930' },
+  { id: 'fracturado', name: 'Fracturado', icon: AlertCircle, type: 'hallazgo', color: '#ea580c', description: 'Diente fracturado', category: 'Diagnóstico', cie10: 'S02.5', cdt: 'D9930' },
+  { id: 'abrasion', name: 'Abrasión', icon: AlertCircle, type: 'hallazgo', color: '#f9a8d4', description: 'Desgaste dental por cepillado', category: 'Diagnóstico', cie10: 'K03.1', cdt: 'D9310' },
+  { id: 'atricion', name: 'Atrición', icon: AlertCircle, type: 'hallazgo', color: '#fdba74', description: 'Desgaste por bruxismo', category: 'Diagnóstico', cie10: 'K03.0', cdt: 'D9310' },
+  { id: 'erosion', name: 'Erosión', icon: AlertCircle, type: 'hallazgo', color: '#67e8f9', description: 'Pérdida de esmalte por ácidos', category: 'Diagnóstico', cie10: 'K03.2', cdt: 'D9310' },
+
   // Tratamientos Básicos
-  { id: 'resina', name: 'Resina', icon: Square, type: 'tratamiento', color: COLORS.resina, description: 'Restauración con resina compuesta', category: 'Tratamiento' },
-  { id: 'amalgama', name: 'Amalgama', icon: Square, type: 'tratamiento', color: '#6b7280', description: 'Restauración con amalgama de plata', category: 'Tratamiento' },
-  { id: 'ionomero', name: 'Ionómero', icon: Square, type: 'tratamiento', color: '#94a3b8', description: 'Restauración con ionómero de vidrio', category: 'Tratamiento' },
-  { id: 'incrustacion', name: 'Incrustación', icon: Square, type: 'tratamiento', color: '#f59e0b', description: 'Incrustación dental', category: 'Tratamiento' },
-  
+  { id: 'resina', name: 'Resina', icon: Square, type: 'tratamiento', color: COLORS.resina, description: 'Restauración con resina compuesta', category: 'Tratamiento', cie10: 'K08.89', cdt: 'D2391' },
+  { id: 'amalgama', name: 'Amalgama', icon: Square, type: 'tratamiento', color: '#a78bfa', description: 'Restauración con amalgama de plata', category: 'Tratamiento', cie10: 'K08.89', cdt: 'D2140' },
+  { id: 'ionomero', name: 'Ionómero', icon: Square, type: 'tratamiento', color: '#7dd3fc', description: 'Restauración con ionómero de vidrio', category: 'Tratamiento', cie10: 'K08.89', cdt: 'D2330' },
+  { id: 'incrustacion', name: 'Incrustación', icon: Square, type: 'tratamiento', color: '#f59e0b', description: 'Incrustación dental', category: 'Tratamiento', cie10: 'K08.89', cdt: 'D2510' },
+
   // Endodoncia
-  { id: 'endodoncia', name: 'Endodoncia', icon: Zap, type: 'tratamiento', color: COLORS.endodoncia, description: 'Tratamiento de conducto', category: 'Endodoncia' },
-  { id: 'retratamiento', name: 'Retratamiento', icon: Zap, type: 'tratamiento', color: '#7c3aed', description: 'Retratamiento de conducto', category: 'Endodoncia' },
-  { id: 'apicectomia', name: 'Apicectomía', icon: Zap, type: 'quirurgico', color: '#7c3aed', description: 'Cirugía apical', category: 'Quirúrgico' },
-  
+  { id: 'endodoncia', name: 'Endodoncia', icon: Zap, type: 'tratamiento', color: COLORS.endodoncia, description: 'Tratamiento de conducto', category: 'Endodoncia', cie10: 'K04.0', cdt: 'D3310' },
+  { id: 'retratamiento', name: 'Retratamiento', icon: Zap, type: 'tratamiento', color: '#7c3aed', description: 'Retratamiento de conducto', category: 'Endodoncia', cie10: 'K04.0', cdt: 'D3330' },
+  { id: 'apicectomia', name: 'Apicectomía', icon: Zap, type: 'quirurgico', color: '#7c3aed', description: 'Cirugía apical', category: 'Quirúrgico', cie10: 'K04.5', cdt: 'D3410' },
+
   // Implantes
-  { id: 'implante', name: 'Implante', icon: Bone, type: 'tratamiento', color: COLORS.implante, description: 'Colocación de implante dental', category: 'Implantología' },
-  { id: 'pilastra', name: 'Pilastra', icon: Bone, type: 'tratamiento', color: '#475569', description: 'Colocación de pilastra', category: 'Implantología' },
-  { id: 'corona_implante', name: 'Corona/Implante', icon: Triangle, type: 'protesis', color: COLORS.corona, description: 'Corona sobre implante', category: 'Prostodoncia' },
-  
+  { id: 'implante', name: 'Implante', icon: Bone, type: 'tratamiento', color: COLORS.implante, description: 'Colocación de implante dental', category: 'Implantología', cie10: 'K08.1', cdt: 'D6010' },
+  { id: 'pilastra', name: 'Pilastra', icon: Bone, type: 'tratamiento', color: '#818cf8', description: 'Colocación de pilastra', category: 'Implantología', cie10: 'K08.1', cdt: 'D6057' },
+  { id: 'corona_implante', name: 'Corona/Implante', icon: Triangle, type: 'protesis', color: COLORS.corona, description: 'Corona sobre implante', category: 'Prostodoncia', cie10: 'K08.1', cdt: 'D6065' },
+
   // Prótesis
-  { id: 'corona', name: 'Corona', icon: Triangle, type: 'tratamiento', color: COLORS.corona, description: 'Corona dental / Funda', category: 'Prostodoncia' },
-  { id: 'puente', name: 'Puente', icon: Heart, type: 'prostodoncia', color: '#84cc16', description: 'Puente dental fijo', category: 'Prostodoncia' },
-  { id: 'protesis', name: 'Prótesis', icon: Award, type: 'prostodoncia', color: '#a855f7', description: 'Prótesis removible', category: 'Prostodoncia' },
-  { id: 'protesis_total', name: 'Prótesis Total', icon: Award, type: 'prostodoncia', color: '#a855f7', description: 'Prótesis completa', category: 'Prostodoncia' },
-  
+  { id: 'corona', name: 'Corona', icon: Triangle, type: 'tratamiento', color: COLORS.corona, description: 'Corona dental / Funda', category: 'Prostodoncia', cie10: 'K08.89', cdt: 'D2740' },
+  { id: 'puente', name: 'Puente', icon: Heart, type: 'prostodoncia', color: '#84cc16', description: 'Puente dental fijo', category: 'Prostodoncia', cie10: 'K08.3', cdt: 'D6240' },
+  { id: 'protesis', name: 'Prótesis', icon: Award, type: 'prostodoncia', color: '#a855f7', description: 'Prótesis removible', category: 'Prostodoncia', cie10: 'K08.1', cdt: 'D5110' },
+  { id: 'protesis_total', name: 'Prótesis Total', icon: Award, type: 'prostodoncia', color: '#a855f7', description: 'Prótesis completa', category: 'Prostodoncia', cie10: 'K08.1', cdt: 'D5130' },
+
   // Cirugía
-  { id: 'extraccion', name: 'Extracción', icon: Scissors, type: 'tratamiento', color: COLORS.extraccion, description: 'Extracción dental simple', category: 'Quirúrgico' },
-  { id: 'extraccion_compleja', name: 'Extracción Compleja', icon: Scissors, type: 'tratamiento', color: '#6b7280', description: 'Extracción quirúrgica', category: 'Quirúrgico' },
-  { id: 'cordal', name: 'Cordal', icon: Scissors, type: 'tratamiento', color: '#6b7280', description: 'Extracción de muela del juicio', category: 'Quirúrgico' },
-  { id: 'quiste', name: 'Quiste', icon: AlertCircle, type: 'quirurgico', color: '#6b7280', description: 'Eliminación de quiste', category: 'Quirúrgico' },
-  
+  { id: 'extraccion', name: 'Extracción', icon: Scissors, type: 'tratamiento', color: COLORS.extraccion, description: 'Extracción dental simple', category: 'Quirúrgico', cie10: 'K08.1', cdt: 'D7140' },
+  { id: 'extraccion_compleja', name: 'Extracción Compleja', icon: Scissors, type: 'tratamiento', color: '#fb7185', description: 'Extracción quirúrgica', category: 'Quirúrgico', cie10: 'K08.1', cdt: 'D7210' },
+  { id: 'cordal', name: 'Cordal', icon: Scissors, type: 'tratamiento', color: '#fda4af', description: 'Extracción de muela del juicio', category: 'Quirúrgico', cie10: 'K01.0', cdt: 'D7240' },
+  { id: 'quiste', name: 'Quiste', icon: AlertCircle, type: 'quirurgico', color: '#fca5a5', description: 'Eliminación de quiste', category: 'Quirúrgico', cie10: 'K09.2', cdt: 'D7450' },
+
   // Ortodoncia
-  { id: 'ortodoncia', name: 'Brackets', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Tratamiento de ortodoncia', category: 'Ortodoncia' },
-  { id: 'brackets_metalicos', name: 'Brackets Metálicos', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Brackets metálicos convencionales', category: 'Ortodoncia' },
-  { id: 'brackets_esteticos', name: 'Brackets Estéticos', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Brackets de zafiro/cerámica', category: 'Ortodoncia' },
-  { id: 'brackets_autoligables', name: 'Brackets Autoligables', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Brackets autoligables', category: 'Ortodoncia' },
-  { id: 'arco', name: 'Arco', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Cambio de arco', category: 'Ortodoncia' },
-  { id: 'elasticos', name: 'Elásticos', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Elásticos intermaxilares', category: 'Ortodoncia' },
-  
+  { id: 'ortodoncia', name: 'Brackets', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Tratamiento de ortodoncia', category: 'Ortodoncia', cie10: 'K07.2', cdt: 'D8080' },
+  { id: 'brackets_metalicos', name: 'Brackets Metálicos', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Brackets metálicos convencionales', category: 'Ortodoncia', cie10: 'K07.2', cdt: 'D8080' },
+  { id: 'brackets_esteticos', name: 'Brackets Estéticos', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Brackets de zafiro/cerámica', category: 'Ortodoncia', cie10: 'K07.2', cdt: 'D8090' },
+  { id: 'brackets_autoligables', name: 'Brackets Autoligables', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Brackets autoligables', category: 'Ortodoncia', cie10: 'K07.2', cdt: 'D8090' },
+  { id: 'arco', name: 'Arco', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Cambio de arco', category: 'Ortodoncia', cie10: 'K07.2', cdt: 'D8670' },
+  { id: 'elasticos', name: 'Elásticos', icon: Star, type: 'tratamiento', color: '#ec4899', description: 'Elásticos intermaxilares', category: 'Ortodoncia', cie10: 'K07.2', cdt: 'D8660' },
+
   // Estética
-  { id: 'blanqueamiento', name: 'Blanqueamiento', icon: Sun, type: 'estético', color: '#f97316', description: 'Blanqueamiento dental', category: 'Estética' },
-  { id: 'carillas', name: 'Carillas', icon: Eye, type: 'estético', color: '#f97316', description: 'Carillas de porcelana', category: 'Estética' },
-  { id: 'contorno', name: 'Contorno Gingival', icon: Pen, type: 'estético', color: '#f97316', description: 'Recontorneo de encía', category: 'Estética' },
-  
+  { id: 'blanqueamiento', name: 'Blanqueamiento', icon: Sun, type: 'estético', color: '#f97316', description: 'Blanqueamiento dental', category: 'Estética', cie10: 'K03.7', cdt: 'D9972' },
+  { id: 'carillas', name: 'Carillas', icon: Eye, type: 'estético', color: '#f97316', description: 'Carillas de porcelana', category: 'Estética', cie10: 'K03.7', cdt: 'D2960' },
+  { id: 'contorno', name: 'Contorno Gingival', icon: Pen, type: 'estético', color: '#f97316', description: 'Recontorneo de encía', category: 'Estética', cie10: 'K08.89', cdt: 'D4249' },
+
   // Preventivo
-  { id: 'sellante', name: 'Sellante', icon: Droplet, type: 'preventivo', color: COLORS.sellante, description: 'Sellante de fosas y fisuras', category: 'Preventivo' },
-  { id: 'fluor', name: 'Aplicación Flúor', icon: Droplet, type: 'preventivo', color: COLORS.sellante, description: 'Aplicación tópica de flúor', category: 'Preventivo' },
-  { id: 'profilaxis', name: 'Profilaxis', icon: Brush, type: 'preventivo', color: COLORS.sellante, description: 'Limpieza dental', category: 'Preventivo' },
-  
+  { id: 'sellante', name: 'Sellante', icon: Droplet, type: 'preventivo', color: COLORS.sellante, description: 'Sellante de fosas y fisuras', category: 'Preventivo', cie10: 'Z29.3', cdt: 'D1351', onlyPosterior: true },
+  { id: 'fluor', name: 'Aplicación Flúor', icon: Droplet, type: 'preventivo', color: COLORS.sellante, description: 'Aplicación tópica de flúor', category: 'Preventivo', cie10: 'Z29.3', cdt: 'D1208' },
+  { id: 'profilaxis', name: 'Profilaxis', icon: Brush, type: 'preventivo', color: COLORS.sellante, description: 'Limpieza dental', category: 'Preventivo', cie10: 'Z29.3', cdt: 'D1110' },
+  { id: 'limpieza_general', name: 'Limpieza General', icon: Sparkles, type: 'preventivo', color: '#64748b', description: 'Automatización de limpieza general', category: 'Preventivo', cie10: 'Z29.3', cdt: 'D1110' },
+
   // Estados
-  { id: 'ausente', name: 'Ausente', icon: X, type: 'estado', color: COLORS.ausente, description: 'Diente ausente / Perdido', category: 'Estado' },
-  { id: 'no_erupcionado', name: 'No Erupcionado', icon: X, type: 'estado', color: COLORS.ausente, description: 'Diente no erupcionado', category: 'Estado' },
-  { id: 'retenido', name: 'Retenido', icon: X, type: 'estado', color: COLORS.ausente, description: 'Diente retenido', category: 'Estado' },
-  { id: 'supernumerario', name: 'Supernumerario', icon: Star, type: 'estado', color: '#a855f7', description: 'Diente extra', category: 'Estado' }
+  { id: 'ausente', name: 'Ausente', icon: X, type: 'estado', color: COLORS.ausente, description: 'Diente ausente / Perdido', category: 'Estado', cie10: 'K08.1', cdt: '—' },
+  { id: 'extraido', name: 'Extraído', icon: Scissors, type: 'estado', color: '#e5e7eb', description: 'Diente extraído', category: 'Estado', cie10: 'K08.1', cdt: 'D7140' },
+  { id: 'no_erupcionado', name: 'No Erupcionado', icon: X, type: 'estado', color: COLORS.ausente, description: 'Diente no erupcionado', category: 'Estado', cie10: 'K01.1', cdt: '—' },
+  { id: 'retenido', name: 'Retenido', icon: X, type: 'estado', color: COLORS.ausente, description: 'Diente retenido', category: 'Estado', cie10: 'K01.0', cdt: '—' },
+  { id: 'supernumerario', name: 'Supernumerario', icon: Star, type: 'estado', color: '#a855f7', description: 'Diente extra', category: 'Estado', cie10: 'K00.1', cdt: '—' },
 ];
 
 const CATEGORIES = Array.from(new Set(CLINICAL_TOOLS.map(t => t.category)));
 
 // ============================================
-// 3. TIPOS DE DATOS
+// 3. ANATOMÍA Y DENTICIÓN
 // ============================================
+
+/** Dientes anteriores adultos: 11-13, 21-23, 31-33, 41-43 */
+const ANTERIOR_ADULT = new Set(['11','12','13','21','22','23','31','32','33','41','42','43']);
+/** Dientes anteriores temporales: 51-53, 61-63, 71-73, 81-83 */
+const ANTERIOR_PRIMARY = new Set(['51','52','53','61','62','63','71','72','73','81','82','83']);
+
+const isAnteriorTooth = (num: string) => ANTERIOR_ADULT.has(num) || ANTERIOR_PRIMARY.has(num);
+const isPosteriorTooth = (num: string) => !isAnteriorTooth(num);
+
+/** Dientes de cordal (terceros molares) */
+const WISDOM_TEETH = new Set(['18','28','38','48']);
+
+/** Nombre de cara según tipo de diente */
+const getFaceName = (face: string, toothNum: string): string => {
+  if (face === 'oclusal' && isAnteriorTooth(toothNum)) return 'Incisal';
+  const map: Record<string, string> = {
+    oclusal: 'Oclusal', vestibular: 'Vestibular', lingual: 'Lingual/Palatino',
+    mesial: 'Mesial', distal: 'Distal'
+  };
+  return map[face] ?? face;
+};
+
+/** Calcula edad en años a partir de fecha ISO */
+const calcAge = (birthDate?: string | null): number | null => {
+  if (!birthDate) return null;
+  const b = new Date(birthDate);
+  if (isNaN(b.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - b.getFullYear();
+  if (today.getMonth() < b.getMonth() || (today.getMonth() === b.getMonth() && today.getDate() < b.getDate())) age--;
+  return age < 0 ? 0 : age;
+};
+
+type DentitionMode = 'adult' | 'mixed' | 'primary';
+
+const getDentitionMode = (age: number | null): DentitionMode => {
+  if (age === null) return 'adult';
+  if (age <= 5) return 'primary';
+  if (age <= 12) return 'mixed';
+  return 'adult';
+};
+
+interface DentitionSet {
+  upper: string[]; lower: string[];
+  upperPrimary?: string[]; lowerPrimary?: string[];
+  midline: number; midlinePrimary?: number;
+  label: string; color: string; description: string;
+}
+
+const DENTITION_SETS: Record<DentitionMode, DentitionSet> = {
+  adult: {
+    upper: ['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28'],
+    lower: ['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'],
+    midline: 8,
+    label: 'Permanente', color: COLORS.primary, description: 'Adulto / Joven (FDI 11-48)'
+  },
+  primary: {
+    upper: ['55','54','53','52','51','61','62','63','64','65'],
+    lower: ['85','84','83','82','81','71','72','73','74','75'],
+    midline: 5,
+    label: 'Temporal', color: '#f59e0b', description: 'Niño ≤ 5 años (FDI 51-85)'
+  },
+  mixed: {
+    // Arcadas permanentes (en erupción)
+    upper: ['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28'],
+    lower: ['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'],
+    midline: 8,
+    // Arcadas temporales (pueden coexistir)
+    upperPrimary: ['55','54','53','52','51','61','62','63','64','65'],
+    lowerPrimary: ['85','84','83','82','81','71','72','73','74','75'],
+    midlinePrimary: 5,
+    label: 'Mixta', color: '#10b981', description: 'Niño 6-12 años - dentición permanente + temporal'
+  },
+};
+
+/** Reglas de validación anatómica */
+interface ValidationResult { blocked: boolean; message: string }
+
+const validateMark = (toothNum: string, face: string, toolId: string, isAusente: boolean): ValidationResult => {
+  // Regla 1: No marcar dientes ausentes (excepto cambiar estado ausente)
+  if (isAusente && toolId !== 'ausente') {
+    return { blocked: true, message: `Diente ${toothNum} está marcado como ausente. Desmárcalo primero para agregar tratamientos.` };
+  }
+  // Regla 2: Sellante solo en posteriores (fosas y fisuras)
+  if (toolId === 'sellante' && isAnteriorTooth(toothNum)) {
+    return { blocked: true, message: `Diente ${toothNum}: el sellante se aplica solo en posteriores (fosas y fisuras). Los anteriores no tienen superficie oclusal.` };
+  }
+  // Regla 3: Cara oclusal en anteriores → superficie no existe clínicamente
+  if (face === 'oclusal' && isAnteriorTooth(toothNum) && !['ausente','no_erupcionado','retenido','supernumerario','fluor','profilaxis','blanqueamiento','ortodoncia','brackets_metalicos','brackets_esteticos','brackets_autoligables','arco','elasticos'].includes(toolId)) {
+    return { blocked: true, message: `Diente ${toothNum}: la cara incisal (centro) no es oclusal en dientes anteriores. Usa vestibular, mesial o distal.` };
+  }
+  // Regla 4: Cordales no aceptan ortodoncia convencional
+  if (WISDOM_TEETH.has(toothNum) && ['ortodoncia','brackets_metalicos','brackets_esteticos','brackets_autoligables'].includes(toolId)) {
+    return { blocked: false, message: `Diente ${toothNum} es un tercer molar (cordal). Los brackets en cordales son poco frecuentes.` };
+  }
+  return { blocked: false, message: '' };
+};
 
 interface FaceData {
   oclusal: string;
@@ -173,163 +273,233 @@ interface ToothData {
   number: string;
   faces: FaceData;
   ausente: boolean;
+  readonlyAusente?: boolean;
   marks: Array<{
+    id: string;
     face: string;
     tool: string;
     state: string;
     timestamp: number;
+    proceso?: boolean;
+    readonly?: boolean;
+    sourceSessionDate?: string;
   }>;
   notes?: string;
+}
+
+interface HistorySnapshot {
+  teethData: Record<string, ToothData>;
+  actionHistory: any[];
+}
+
+const cloneHistorySnapshot = (snapshot: HistorySnapshot): HistorySnapshot => {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(snapshot);
+  }
+  return JSON.parse(JSON.stringify(snapshot));
+};
+
+interface OdontogramSnapshot {
+  teethData: Record<string, ToothData>;
+  actionHistory: any[];
+  hydratedFromPrevious?: boolean;
+  sourceDate?: string | null;
 }
 
 interface ToothProps {
   number: string;
   faces: FaceData;
   ausente?: boolean;
+  isReadonly?: boolean;
   onFaceClick: (face: string) => void;
   hasMark?: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
+  isAnterior?: boolean; // affects face label: Oclusal → Incisal
+  isPrimary?: boolean;  // smaller visual hint for deciduous teeth
+  previousMarks?: Array<{ tool: string; face: string; toolLabel?: string; cie10?: string; sessionDate?: string }>; // ghost layer
 }
 
 // ============================================
-// 4. COMPONENTE DIENTE MEJORADO
+// 4. COMPONENTE DIENTE VISUAL PREMIUM (OrthoOdontogram)
 // ============================================
 
-const ToothGraphic = React.memo(({ number, faces, ausente, onFaceClick, hasMark, isSelected, onSelect }: ToothProps) => {
-  const [hoveredFace, setHoveredFace] = useState<string | null>(null);
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  const getFaceColor = (face: string, baseColor: string) => {
-    if (hoveredFace === face && baseColor === COLORS.healthy) return COLORS.primaryLight;
-    if (hoveredFace === face) return baseColor; 
-    return baseColor;
-  };
-
-  const paths = {
-    vestibular: "M 15 15 Q 50 5 85 15 L 65 35 Q 50 30 35 35 Z",
-    lingual: "M 35 65 Q 50 70 65 65 L 85 85 Q 50 95 15 85 Z",
-    mesial: "M 15 15 L 35 35 Q 30 50 35 65 L 15 85 Q 5 50 15 15 Z",
-    distal: "M 85 15 L 65 35 Q 70 50 65 65 L 85 85 Q 95 50 85 15 Z",
-    oclusal: "M 35 35 Q 50 30 65 35 Q 70 50 65 65 Q 50 70 35 65 Q 30 50 35 35 Z"
-  };
-
+const ToothGraphic = React.memo(({ number, faces, ausente, isSelected, onFaceClick }: any) => {
   return (
-    <div 
-      onClick={onSelect}
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
+    <div
+      className={`ortho-tooth${isSelected ? ' ortho-tooth-selected' : ''}`}
       style={{
-        width: '44px',
-        height: '68px',
-        margin: '2px',
+        width: '56px',
+        height: '86px',
+        margin: '3px',
         position: 'relative',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+        opacity: ausente ? 0.35 : 1,
+        userSelect: 'none',
         zIndex: isSelected ? 20 : 1,
-        opacity: ausente ? 0.4 : 1,
-        filter: isSelected ? 'drop-shadow(0 4px 8px rgba(0,164,228,0.3))' : (ausente ? 'grayscale(100%)' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.05))'),
+        cursor: 'pointer',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        flexShrink: 0
       }}
-      className="tooth-container hover:z-20"
     >
-      <svg width="100%" height="100%" viewBox="0 0 100 130" style={{ overflow: 'visible' }}>
+      <svg width="100%" height="100%" viewBox="0 0 100 130" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <filter id={`shadow-${number}`} x="-10%" y="-10%" width="120%" height="120%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.1" />
-          </filter>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
+          <filter id={`shadow-${number}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#000000" floodOpacity="0.1" />
           </filter>
         </defs>
-
-        <circle cx="50" cy="50" r="42" fill={isSelected ? '#e6f7ff' : '#f8fafc'} filter={`url(#shadow-${number})`} />
-
-        <g stroke={COLORS.border} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
-          <path d={paths.vestibular} fill={getFaceColor('vestibular', faces.vestibular)} 
-            onClick={(e) => { e.stopPropagation(); onFaceClick('vestibular'); }} 
-            onMouseEnter={() => setHoveredFace('vestibular')} onMouseLeave={() => setHoveredFace(null)} 
-            style={{ transition: 'fill 0.2s, opacity 0.2s', opacity: hoveredFace === 'vestibular' ? 0.8 : 1 }} 
-            className={hoveredFace === 'vestibular' ? 'face-hover' : ''} />
-          
-          <path d={paths.mesial} fill={getFaceColor('mesial', faces.mesial)} 
-            onClick={(e) => { e.stopPropagation(); onFaceClick('mesial'); }} 
-            onMouseEnter={() => setHoveredFace('mesial')} onMouseLeave={() => setHoveredFace(null)} 
-            style={{ transition: 'fill 0.2s, opacity 0.2s', opacity: hoveredFace === 'mesial' ? 0.8 : 1 }} />
-          
-          <path d={paths.distal} fill={getFaceColor('distal', faces.distal)} 
-            onClick={(e) => { e.stopPropagation(); onFaceClick('distal'); }} 
-            onMouseEnter={() => setHoveredFace('distal')} onMouseLeave={() => setHoveredFace(null)} 
-            style={{ transition: 'fill 0.2s, opacity 0.2s', opacity: hoveredFace === 'distal' ? 0.8 : 1 }} />
-          
-          <path d={paths.lingual} fill={getFaceColor('lingual', faces.lingual)} 
-            onClick={(e) => { e.stopPropagation(); onFaceClick('lingual'); }} 
-            onMouseEnter={() => setHoveredFace('lingual')} onMouseLeave={() => setHoveredFace(null)} 
-            style={{ transition: 'fill 0.2s, opacity 0.2s', opacity: hoveredFace === 'lingual' ? 0.8 : 1 }} />
-          
-          <path d={paths.oclusal} fill={getFaceColor('oclusal', faces.oclusal)} 
-            onClick={(e) => { e.stopPropagation(); onFaceClick('oclusal'); }} 
-            onMouseEnter={() => setHoveredFace('oclusal')} onMouseLeave={() => setHoveredFace(null)} 
-            style={{ transition: 'fill 0.2s, opacity 0.2s', opacity: hoveredFace === 'oclusal' ? 0.8 : 1 }} />
+        <circle cx="50" cy="50" r="42" fill={isSelected ? COLORS.secondaryLight : '#FFFFFF'} stroke={isSelected ? COLORS.primary : COLORS.borderDark} strokeWidth={isSelected ? "2.5" : "1.5"} filter={`url(#shadow-${number})`} />
+        <g stroke={COLORS.borderDark} strokeWidth="1" fill="none">
+          <path d="M 15 15 Q 50 5 85 15 L 65 35 Q 50 30 35 35 Z" fill={faces?.vestibular || '#FAFAFA'} onClick={() => onFaceClick('vestibular')} />
+          <path d="M 35 65 Q 50 70 65 65 L 85 85 Q 50 95 15 85 Z" fill={faces?.lingual || '#FAFAFA'} onClick={() => onFaceClick('lingual')} />
+          <path d="M 15 15 L 35 35 Q 30 50 35 65 L 15 85 Q 5 50 15 15 Z" fill={faces?.mesial || '#FAFAFA'} onClick={() => onFaceClick('mesial')} />
+          <path d="M 85 15 L 65 35 Q 70 50 65 65 L 85 85 Q 95 50 85 15 Z" fill={faces?.distal || '#FAFAFA'} onClick={() => onFaceClick('distal')} />
+          <circle cx="50" cy="50" r="15" fill={faces?.oclusal || '#F3F4F6'} stroke={COLORS.borderDark} strokeWidth="0.8" onClick={() => onFaceClick('oclusal')} />
         </g>
-
         {ausente && (
           <g transform="translate(50, 50)">
-            <line x1="-30" y1="-30" x2="30" y2="30" stroke={COLORS.error} strokeWidth="6" strokeLinecap="round" />
-            <line x1="30" y1="-30" x2="-30" y2="30" stroke={COLORS.error} strokeWidth="6" strokeLinecap="round" />
+            <line x1="-28" y1="-28" x2="28" y2="28" stroke={COLORS.error} strokeWidth="5" strokeLinecap="round" opacity="0.5" />
+            <line x1="28" y1="-28" x2="-28" y2="28" stroke={COLORS.error} strokeWidth="5" strokeLinecap="round" opacity="0.5" />
           </g>
         )}
-
-        <text x="50" y="115" textAnchor="middle" fontSize="18" fontWeight="800" fill={isSelected ? COLORS.primary : COLORS.textLight}>
-          {number}
-        </text>
-
-        {hasMark && !ausente && (
-          <circle cx="50" cy="15" r="4" fill={COLORS.primary} filter="url(#glow)">
-            <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" />
-          </circle>
-        )}
+        <g>
+          <rect x="32" y="108" width="36" height="22" rx="6" fill={isSelected ? COLORS.primary : COLORS.secondaryLight} stroke={isSelected ? COLORS.primaryDark : COLORS.borderDark} strokeWidth="1.5" filter={`url(#shadow-${number})`} />
+          <text x="50" y="123" textAnchor="middle" fontSize="14" fontWeight="800" fill={isSelected ? '#FFFFFF' : COLORS.textLight}>
+            {number}
+          </text>
+        </g>
       </svg>
-
-      {showTooltip && !ausente && (
-        <div style={{
-          position: 'absolute',
-          bottom: '100%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'white',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          fontSize: '11px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: `1px solid ${COLORS.border}`,
-          whiteSpace: 'nowrap',
-          zIndex: 100,
-          marginBottom: '5px'
-        }}>
-          Diente {number}
-        </div>
-      )}
     </div>
   );
 });
+
+const createEmptyFaces = (): FaceData => ({
+  oclusal: COLORS.healthy,
+  vestibular: COLORS.healthy,
+  lingual: COLORS.healthy,
+  mesial: COLORS.healthy,
+  distal: COLORS.healthy,
+});
+
+const createEmptyTooth = (number: string): ToothData => ({
+  number,
+  ausente: false,
+  readonlyAusente: false,
+  faces: createEmptyFaces(),
+  marks: [],
+});
+
+const normalizeSnapshot = (snapshot: any, readonly = false): OdontogramSnapshot | null => {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+
+  const teethEntries = Object.entries(snapshot.teethData || {});
+  if (!teethEntries.length) return null;
+
+  const teethData = teethEntries.reduce<Record<string, ToothData>>((acc, [number, tooth]) => {
+    const safeTooth = tooth as ToothData;
+    const faces = {
+      ...createEmptyFaces(),
+      ...(safeTooth?.faces || {}),
+    };
+
+    acc[number] = {
+      number,
+      faces,
+      ausente: Boolean(safeTooth?.ausente),
+      readonlyAusente: readonly ? Boolean(safeTooth?.ausente) : Boolean(safeTooth?.readonlyAusente),
+      marks: Array.isArray(safeTooth?.marks)
+        ? safeTooth.marks.map((mark) => ({
+            ...mark,
+            readonly: readonly ? true : Boolean(mark.readonly),
+          }))
+        : [],
+      notes: safeTooth?.notes,
+    };
+
+    return acc;
+  }, {});
+
+  return {
+    teethData,
+    actionHistory: Array.isArray(snapshot.actionHistory)
+      ? snapshot.actionHistory.map((action: any) => ({ ...action, readonly: readonly ? true : Boolean(action.readonly) }))
+      : [],
+    hydratedFromPrevious: readonly,
+    sourceDate: snapshot.sourceDate || null,
+  };
+};
+
+const buildSnapshotFromHallazgos = (hallazgos: any[], readonly = false): OdontogramSnapshot | null => {
+  if (!Array.isArray(hallazgos) || hallazgos.length === 0) return null;
+
+  const normalizeState = (state: string) => (String(state || '').toLowerCase() === 'realizado' ? 'realizado' : 'pendiente');
+
+  const teethData: Record<string, ToothData> = {};
+  const actionHistory: any[] = [];
+
+  hallazgos.forEach((hallazgo: any) => {
+    const num = String(hallazgo.diente || '').trim();
+    if (!num) return;
+
+    if (!teethData[num]) {
+      teethData[num] = createEmptyTooth(num);
+    }
+
+    if (hallazgo.tipo === 'ausente' || hallazgo.tipo === 'extraido') {
+      teethData[num].ausente = true;
+      teethData[num].readonlyAusente = readonly;
+      actionHistory.push({
+        type: 'toggle-ausente',
+        tooth: num,
+        timestamp: new Date(hallazgo.fechaRegistro || Date.now()).getTime(),
+        readonly,
+      });
+      return;
+    }
+
+    const tool = CLINICAL_TOOLS.find(t => t.id === hallazgo.tipo);
+    if (tool && hallazgo.superficie) {
+      const face = hallazgo.superficie as keyof FaceData;
+      teethData[num].faces[face] = tool.color;
+      teethData[num].marks.push({
+        id: hallazgo.id || `hgo_${num}_${hallazgo.superficie}_${hallazgo.tipo}`.replace(/\s+/g, '_').toLowerCase(),
+        face: hallazgo.superficie,
+        tool: hallazgo.tipo,
+        state: normalizeState(String(hallazgo.severidad || 'pendiente')),
+        timestamp: new Date(hallazgo.fechaRegistro || Date.now()).getTime(),
+        proceso: Boolean((hallazgo as any).proceso),
+        readonly,
+        sourceSessionDate: hallazgo.fechaRegistro || '',
+      });
+      actionHistory.push({
+        type: 'mark',
+        tooth: num,
+        face: hallazgo.superficie,
+        tool: hallazgo.tipo,
+        state: normalizeState(String(hallazgo.severidad || 'pendiente')),
+        timestamp: new Date(hallazgo.fechaRegistro || Date.now()).getTime(),
+        readonly,
+      });
+    }
+  });
+
+  return { teethData, actionHistory, hydratedFromPrevious: readonly, sourceDate: null };
+};
 
 // ============================================
 // 5. COMPONENTE PRINCIPAL CON CONEXIÓN AL PADRE
 // ============================================
 
 // CAMBIO 1: AHORA RECIBE PROPS PARA AVISARLE AL PADRE
-export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }: any) => {
-  const [activeState, setActiveState] = useState(STATES[0].id);
+export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value, birthDate, previousHallazgos, initialState, previousEstado }: any) => {
+  const [activeState, setActiveState] = useState('realizado');
   const [activeTool, setActiveTool] = useState(CLINICAL_TOOLS[0].id);
+  const [processMode, setProcessMode] = useState(false);
   const [teethData, setTeethData] = useState<Record<string, ToothData>>({});
   
   // HISTORIAL DE ACCIONES INDIVIDUALES
   const [actionHistory, setActionHistory] = useState<any[]>([]);
+  const [undoStack, setUndoStack] = useState<HistorySnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<HistorySnapshot[]>([]);
   
   const [selectedTooth, setSelectedTooth] = useState<string | null>(null);
   const [showStats, setShowStats] = useState(false);
@@ -337,44 +507,114 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoaded, setIsLoaded] = useState(false); // Guardia para evitar bucles
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
+  const localChangesRef = useRef(false);
+  const hydrationSignatureRef = useRef('');
 
-  // REHIDRATACIÓN: Cargar datos desde Supabase al estado local
+  const getCurrentSnapshot = useCallback((): HistorySnapshot => ({
+    teethData,
+    actionHistory,
+  }), [teethData, actionHistory]);
+
+  const pushUndoSnapshot = useCallback(() => {
+    setUndoStack((prev) => [cloneHistorySnapshot(getCurrentSnapshot()), ...prev].slice(0, 50));
+    setRedoStack([]);
+  }, [getCurrentSnapshot]);
+
+  const handleUndo = useCallback(() => {
+    if (!undoStack.length) return;
+    const [last, ...rest] = undoStack;
+    const current = cloneHistorySnapshot(getCurrentSnapshot());
+    localChangesRef.current = true;
+    setUndoStack(rest);
+    setRedoStack((prev) => [current, ...prev].slice(0, 50));
+    setTeethData(cloneHistorySnapshot(last).teethData);
+    setActionHistory(cloneHistorySnapshot(last).actionHistory);
+  }, [undoStack, getCurrentSnapshot]);
+
+  const handleRedo = useCallback(() => {
+    if (!redoStack.length) return;
+    const [next, ...rest] = redoStack;
+    const current = cloneHistorySnapshot(getCurrentSnapshot());
+    localChangesRef.current = true;
+    setRedoStack(rest);
+    setUndoStack((prev) => [current, ...prev].slice(0, 50));
+    setTeethData(cloneHistorySnapshot(next).teethData);
+    setActionHistory(cloneHistorySnapshot(next).actionHistory);
+  }, [redoStack, getCurrentSnapshot]);
+
+  // DENTICIÓN
+  const patientAge = useMemo(() => calcAge(birthDate), [birthDate]);
+  const autoDentitionMode = useMemo(() => getDentitionMode(patientAge), [patientAge]);
+  const [dentitionOverride, setDentitionOverride] = useState<DentitionMode | null>(null);
+  const dentitionMode: DentitionMode = dentitionOverride ?? autoDentitionMode;
+  const dentitionInfo = DENTITION_SETS[dentitionMode];
+
+  const showValidationWarning = (msg: string, durationMs = 5000) => {
+    setValidationWarning(msg);
+    setTimeout(() => setValidationWarning(null), durationMs);
+  };
+
+  const editableInitialSnapshot = useMemo(() => normalizeSnapshot(initialState, false), [initialState]);
+  const readonlyPreviousSnapshot = useMemo(
+    () => normalizeSnapshot(previousEstado, true) || buildSnapshotFromHallazgos(previousHallazgos, true),
+    [previousEstado, previousHallazgos]
+  );
+
+  // REHIDRATACIÓN: Cargar snapshot visual completo al estado local
   useEffect(() => {
-    // Si ya cargamos una vez, o no hay datos, no hacemos nada
-    if (isLoaded || !value || !Array.isArray(value) || value.length === 0) return;
+    if (localChangesRef.current) return;
 
-    const restoredData: Record<string, ToothData> = {};
-    
-    value.forEach((hallazgo: any) => {
-      const num = hallazgo.diente;
-      if (!restoredData[num]) {
-        restoredData[num] = { 
-          number: num, ausente: false, 
-          faces: { oclusal: COLORS.healthy, vestibular: COLORS.healthy, lingual: COLORS.healthy, mesial: COLORS.healthy, distal: COLORS.healthy },
-          marks: []
-        };
-      }
+    // PRIORIDAD: value (hallazgos actuales) > editableInitialSnapshot > readonlyPreviousSnapshot
+    let snapshot: OdontogramSnapshot | null = null;
+    if (Array.isArray(value) && value.length > 0) {
+      snapshot = buildSnapshotFromHallazgos(value, false);
+    } else if (editableInitialSnapshot) {
+      snapshot = editableInitialSnapshot;
+    } else if (readonlyPreviousSnapshot) {
+      snapshot = readonlyPreviousSnapshot;
+    }
 
-      if (hallazgo.tipo === 'ausente') {
-        restoredData[num].ausente = true;
-      } else {
-        const tool = CLINICAL_TOOLS.find(t => t.id === hallazgo.tipo);
-        if (tool && hallazgo.superficie) {
-          restoredData[num].faces[hallazgo.superficie as keyof FaceData] = tool.color;
-          restoredData[num].marks.push({
-            face: hallazgo.superficie, tool: hallazgo.tipo,
-            state: hallazgo.severidad, timestamp: Date.now()
-          });
-        }
-      }
-    });
+    if (!snapshot) return;
 
-    setTeethData(restoredData);
-    setIsLoaded(true); // Bloqueamos futuras recargas para que no haya bucle
-  }, [value, isLoaded]);
+    const signature = JSON.stringify(snapshot.teethData);
+    if (hydrationSignatureRef.current === signature) return;
+
+    console.log('[ODONTO] Snapshot hidratado:', snapshot);
+    hydrationSignatureRef.current = signature;
+    setTeethData(snapshot.teethData);
+    setActionHistory(snapshot.actionHistory || []);
+    setUndoStack([]);
+    setRedoStack([]);
+    setIsLoaded(true);
+  }, [editableInitialSnapshot, readonlyPreviousSnapshot, value]);
   
-  const upperTeeth = ['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28'];
-  const lowerTeeth = ['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'];
+  // All visible teeth across all active arcadas
+  const allVisibleTeeth = useMemo(() => {
+    const { upper, lower, upperPrimary, lowerPrimary } = dentitionInfo;
+    return [...upper, ...lower, ...(upperPrimary ?? []), ...(lowerPrimary ?? [])];
+  }, [dentitionInfo]);
+
+  // SNAPSHOT: índice de hallazgos de sesiones anteriores por diente
+  const prevMarksByTooth = useMemo((): Record<string, Array<{ tool: string; face: string; toolLabel?: string; cie10?: string; sessionDate?: string }>> => {
+    if (!previousHallazgos || !Array.isArray(previousHallazgos)) return {};
+    const map: Record<string, any[]> = {};
+    for (const h of previousHallazgos) {
+      if (!h.diente || h.tipo === 'ausente') continue;
+      if (!map[h.diente]) map[h.diente] = [];
+      const tool = CLINICAL_TOOLS.find(t => t.id === h.tipo);
+      map[h.diente].push({
+        tool: h.tipo,
+        face: h.superficie || '—',
+        toolLabel: tool?.name ?? h.tipo,
+        cie10: h.cie10 || tool?.cie10 || '',
+        sessionDate: h.fechaRegistro ? new Date(h.fechaRegistro).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+      });
+    }
+    return map;
+  }, [previousHallazgos]);
 
   const currentToolObj = CLINICAL_TOOLS.find(t => t.id === activeTool) || CLINICAL_TOOLS[0];
 
@@ -392,7 +632,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
     totalMarcas: Object.values(teethData).reduce((acc, tooth) => acc + (tooth.marks?.length || 0), 0),
     dientesConMarcas: Object.values(teethData).filter(t => t.marks?.length > 0).length,
     ausentes: Object.values(teethData).filter(t => t.ausente).length,
-    sanos: 32 - Object.values(teethData).filter(t => t.ausente || t.marks?.length > 0).length,
+    sanos: allVisibleTeeth.length - allVisibleTeeth.filter(n => teethData[n]?.ausente || teethData[n]?.marks?.length > 0).length,
     porEstado: STATES.map(state => ({
       ...state,
       count: Object.values(teethData).filter(t => t.marks?.some(m => m.state === state.id)).length
@@ -400,78 +640,153 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
   };
 
   const getToothData = (num: string): ToothData => {
-    return teethData[num] || { 
-      number: num,
-      ausente: false, 
-      faces: { oclusal: COLORS.healthy, vestibular: COLORS.healthy, lingual: COLORS.healthy, mesial: COLORS.healthy, distal: COLORS.healthy },
-      marks: []
-    };
+    return teethData[num] || createEmptyTooth(num);
   };
 
   // Manejar click en cara del diente 
   const handleFaceClick = (num: string, face: string) => {
+    localChangesRef.current = true;
+    const currentTooth = getToothData(num);
+    const faceLocked = currentTooth.readonlyAusente || currentTooth.marks?.some((mark) => mark.face === face && mark.readonly);
+    if (faceLocked) {
+      showValidationWarning(`La pieza ${num} tiene memoria clinica ejecutada y solo lectura. Registra el cambio como un hallazgo nuevo en otra cara o en una nueva consulta.`);
+      return;
+    }
+
+    const isAbsenceTool = activeTool === 'ausente' || activeTool === 'extraido';
+
+    // CASO 0: AUTOMATIZACIÓN DE LIMPIEZA GENERAL
+    if (activeTool === 'limpieza_general') {
+      pushUndoSnapshot();
+      const ts = Date.now();
+      setActionHistory(prev => [{ type: 'automation-limpieza', tooth: 'general', timestamp: ts }, ...prev].slice(0, 20));
+      setTeethData(prev => {
+        const next = { ...prev };
+        allVisibleTeeth.forEach((toothNum) => {
+          const baseTooth = next[toothNum] || createEmptyTooth(toothNum);
+          if (baseTooth.ausente || baseTooth.readonlyAusente) return;
+          const targetFace: keyof FaceData = isAnteriorTooth(toothNum) ? 'vestibular' : 'oclusal';
+          const hasMark = baseTooth.marks.some((m) => m.face === targetFace && (m.tool === 'profilaxis' || m.tool === 'limpieza_general'));
+          if (hasMark) return;
+          next[toothNum] = {
+            ...baseTooth,
+            faces: { ...baseTooth.faces, [targetFace]: COLORS.sellante },
+            marks: [
+              ...baseTooth.marks,
+              {
+                id: `hgo_${toothNum}_${targetFace}_limpieza_general_${ts}`,
+                face: targetFace,
+                tool: 'limpieza_general',
+                state: activeState,
+                proceso: processMode,
+                timestamp: ts,
+              },
+            ],
+          };
+        });
+        return next;
+      });
+      return;
+    }
     
-    // CASO 1: HERRAMIENTA "AUSENTE"
-    if (activeTool === 'ausente') {
+    // CASO 1: HERRAMIENTA "AUSENTE" — toggle sin validación anatómica
+    if (isAbsenceTool) {
+      if (currentTooth.readonlyAusente) {
+        showValidationWarning(`La ausencia historica de la pieza ${num} esta bloqueada como memoria evolutiva.`);
+        return;
+      }
+      pushUndoSnapshot();
       const newAction = { type: 'toggle-ausente', tooth: num, timestamp: Date.now() };
       setActionHistory(prev => [newAction, ...prev].slice(0, 20));
-      
       setTeethData(prev => {
-        const current = prev[num] || getToothData(num);
-        return { ...prev, [num]: { ...current, ausente: !current.ausente } };
+        const current = prev[num] || createEmptyTooth(num);
+        // Al marcar ausente, limpiar cualquier marca previa del diente
+        const nextAusente = !current.ausente;
+        return { ...prev, [num]: { ...current, ausente: nextAusente, marks: nextAusente ? [] : current.marks,
+          faces: nextAusente ? createEmptyFaces() : current.faces } };
       });
       return;
     }
 
     // CASO 2: HERRAMIENTAS CLÍNICAS (Resina, caries, etc)
+    // ── VALIDACIÓN ANATÓMICA ──────────────────────────────────────
+    const validation = validateMark(num, face, activeTool, currentTooth.ausente);
+    if (validation.blocked) {
+      showValidationWarning(validation.message);
+      return;
+    }
+    // Advertencias no bloqueantes (ej. cordal + bracket)
+    if (validation.message) showValidationWarning(validation.message, 4000);
+    // ─────────────────────────────────────────────────────────────
+
     const paintColor = currentToolObj.color;
-    const currentTooth = getToothData(num);
-    
     const existingMark = currentTooth.marks?.find(m => m.face === face && m.tool === activeTool);
     
-    if (!existingMark) {
-      const newAction = { 
-        type: 'mark', 
-        tooth: num, 
-        face, 
-        tool: activeTool, 
-        state: activeState, 
-        timestamp: Date.now() 
-      };
+    if (existingMark) {
+      if (existingMark.readonly) {
+        showValidationWarning(`La marca historica ${currentToolObj.name} en la pieza ${num} es solo lectura.`);
+        return;
+      }
+      pushUndoSnapshot();
+      // TOGGLE DELETE: clic sobre marca existente → la elimina y resetea el color
+      const newAction = { type: 'unmark', tooth: num, face, tool: activeTool, timestamp: Date.now() };
       setActionHistory(prev => [newAction, ...prev].slice(0, 20));
+      setTeethData(prev => {
+        const current = prev[num] || createEmptyTooth(num);
+        const remainingMarks = current.marks.filter(m => !(m.face === face && m.tool === activeTool));
+        // Calcular color correcto para la cara: si otra herramienta la pintó también, usar el último color de esa marca; si no, healthy
+        const lastColorForFace = remainingMarks
+          .filter(m => m.face === face)
+          .slice(-1)[0];
+        const faceColor = lastColorForFace
+          ? (CLINICAL_TOOLS.find(t => t.id === lastColorForFace.tool)?.color ?? COLORS.healthy)
+          : COLORS.healthy;
+        return {
+          ...prev,
+          [num]: { ...current, faces: { ...current.faces, [face]: faceColor }, marks: remainingMarks }
+        };
+      });
+      return;
     }
     
+    // MARCA NUEVA
+    pushUndoSnapshot();
+    const ts = Date.now();
+    setActionHistory(prev => [{ type: 'mark', tooth: num, face, tool: activeTool, state: activeState,
+      cie10: (currentToolObj as any).cie10, cdt: (currentToolObj as any).cdt, proceso: processMode, timestamp: ts }, ...prev].slice(0, 20));
     setTeethData(prev => {
-      const current = prev[num] || getToothData(num);
-      const checkMark = current.marks?.find(m => m.face === face && m.tool === activeTool);
-      
+      const current = prev[num] || createEmptyTooth(num);
       return {
         ...prev,
         [num]: {
           ...current,
           faces: { ...current.faces, [face]: paintColor },
-          marks: checkMark 
-            ? current.marks
-            : [...(current.marks || []), { 
-                face, 
-                tool: activeTool, 
-                state: activeState, 
-                timestamp: Date.now()
-              }]
+          marks: [...(current.marks || []), {
+            id: `hgo_${num}_${face}_${activeTool}_${ts}`.replace(/\s+/g, '_').toLowerCase(),
+            face, tool: activeTool, state: activeState, proceso: processMode, timestamp: ts
+          }]
         }
       };
     });
   };
 
-  const clearAll = () => {
-    if (window.confirm('¿Está seguro de limpiar todo el odontograma?')) {
-      setTeethData({});
-      setActionHistory([]);
-    }
-  };
+  const clearAll = () => setShowClearConfirm(true);
 
   const exportData = () => {
-    const dataStr = JSON.stringify({ teethData, actionHistory }, null, 2);
+    const allHallazgos = Object.values(teethData).flatMap(tooth =>
+      (tooth.marks || []).map(mark => ({
+        id: mark.id,
+        diente: tooth.number,
+        tipo: mark.tool,
+        superficie: mark.face,
+        descripcion: `${mark.tool} en ${tooth.number} (${mark.face})`,
+        severidad: mark.state,
+        fechaRegistro: new Date(mark.timestamp).toISOString(),
+        cie10: (CLINICAL_TOOLS.find(t => t.id === mark.tool)?.cie10) || '',
+        cdt: (CLINICAL_TOOLS.find(t => t.id === mark.tool)?.cdt) || '',
+      }))
+    );
+    const dataStr = JSON.stringify({ hallazgos: allHallazgos, teethData, actionHistory }, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = `odontograma_${new Date().toISOString().slice(0,10)}.json`;
     const linkElement = document.createElement('a');
@@ -483,14 +798,17 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      localChangesRef.current = true;
+      pushUndoSnapshot();
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target?.result as string);
           setTeethData(data.teethData || {});
           setActionHistory(data.actionHistory || []);
-        } catch (error) {
-          alert('Error al importar el archivo');
+        } catch {
+          setImportError('El archivo no es un odontograma válido.');
+          setTimeout(() => setImportError(null), 4000);
         }
       };
       reader.readAsText(file);
@@ -500,223 +818,390 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
   // Atajos de teclado para estados
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === '1') setActiveState('pendiente');
-      if (e.ctrlKey && e.key === '2') setActiveState('realizado');
-      if (e.ctrlKey && e.key === '3') setActiveState('externo');
-      if (e.ctrlKey && e.key === '4') setActiveState('presupuesto');
+      if (e.ctrlKey && e.key === '1') setActiveState('realizado');
+      if (e.ctrlKey && e.key === '2') setActiveState('pendiente');
+      if (e.ctrlKey && e.key === '3') setProcessMode((prev) => !prev);
+      if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        handleUndo();
+      }
+      if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault();
+        handleRedo();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [handleRedo, handleUndo]);
 
   // 🚀 SINCRONIZACIÓN: Avisar al padre para guardar en Supabase
   // Usamos un Ref para comparar y evitar que el Padre se vuelva loco
   const lastUpdateRef = React.useRef("");
 
   useEffect(() => {
+    // Exportar absolutamente todos los hallazgos y herramientas, sin filtrar nada
     const hallazgosExportar: any[] = [];
+    const snapshot: OdontogramSnapshot = {
+      teethData,
+      actionHistory,
+      hydratedFromPrevious: Boolean(readonlyPreviousSnapshot && !editableInitialSnapshot),
+      sourceDate: readonlyPreviousSnapshot?.sourceDate || null,
+    };
 
     Object.values(teethData).forEach(diente => {
+      // Exportar estado ausente
       if (diente.ausente) {
         hallazgosExportar.push({
           id: `aus-${diente.number}`,
-          diente: diente.number, tipo: 'ausente',
+          diente: diente.number, tipo: 'extraido',
           descripcion: 'Diente ausente', fechaRegistro: new Date().toISOString()
         });
       }
-      
-      if (diente.marks && diente.marks.length > 0) {
+      // Exportar todas las marcas/herramientas
+      if (Array.isArray(diente.marks)) {
         diente.marks.forEach(marca => {
           hallazgosExportar.push({
-            id: `m-${diente.number}-${marca.tool}-${marca.face}`,
+            id: marca.id || `hgo_${diente.number}_${marca.tool}_${marca.face}`.replace(/\s+/g, '_').toLowerCase(),
             diente: diente.number, tipo: marca.tool,
             superficie: marca.face, severidad: marca.state,
-            descripcion: `Cara ${marca.face}`, fechaRegistro: new Date(marca.timestamp).toISOString()
+            proceso: Boolean(marca.proceso),
+            cie10: CLINICAL_TOOLS.find(t => t.id === marca.tool)?.cie10 ?? '',
+            cdt: CLINICAL_TOOLS.find(t => t.id === marca.tool)?.cdt ?? '',
+            descripcion: `Cara ${marca.face}${marca.proceso ? ' · en proceso' : ''}`,
+            fechaRegistro: new Date(marca.timestamp).toISOString()
           });
         });
       }
     });
 
-    // VÁLVULA DE SEGURIDAD: Solo avisamos al padre si los datos CAMBIARON de verdad
-    // Excluimos campo `fechaRegistro` (puede cambiar cada render) para comparación estable
-    const currentDataStr = JSON.stringify(hallazgosExportar.map(({ fechaRegistro, ...rest }) => rest));
-    if (lastUpdateRef.current === currentDataStr) return;
-
-    lastUpdateRef.current = currentDataStr;
-
-    // Avisamos al padre
+    // Siempre avisar al padre (sin válvula de seguridad)
     if (onChange) onChange(hallazgosExportar);
-    if (onUpdate) onUpdate(hallazgosExportar);
+    if (onUpdate) onUpdate(hallazgosExportar, snapshot);
     if (onHistoryChange) onHistoryChange(hallazgosExportar);
 
-  }, [teethData]); // Solo reacciona a cambios en los dientes, no a las funciones del padre
+  }, [actionHistory, editableInitialSnapshot, onChange, onHistoryChange, onUpdate, readonlyPreviousSnapshot, teethData]);
 
   return (
+    <>
+    <ConfirmDialog
+      isOpen={showClearConfirm}
+      title="Limpiar odontograma"
+      message="Se borrarán todas las marcas editables. Puedes recuperarlas con Deshacer."
+      confirmLabel="Limpiar todo"
+      cancelLabel="Cancelar"
+      variant="danger"
+      onConfirm={() => {
+        localChangesRef.current = true;
+        pushUndoSnapshot();
+        setTeethData((prev) => {
+          const preservedEntries: Array<[string, ToothData]> = (Object.entries(prev) as Array<[string, ToothData]>)
+          .map(([num, tooth]) => {
+            const lockedMarks = tooth.marks.filter((mark) => mark.readonly);
+            const rebuiltFaces = createEmptyFaces();
+            lockedMarks.forEach((mark) => {
+              const tool = CLINICAL_TOOLS.find((entry) => entry.id === mark.tool);
+              if (tool) rebuiltFaces[mark.face as keyof FaceData] = tool.color;
+            });
+            if (tooth.readonlyAusente) {
+              return [num, { ...tooth, faces: createEmptyFaces(), marks: [], ausente: true, readonlyAusente: true }];
+            }
+            if (lockedMarks.length) {
+              return [num, { ...tooth, faces: rebuiltFaces, marks: lockedMarks, ausente: false }];
+            }
+            return [num, createEmptyTooth(num)];
+          });
+
+          return Object.fromEntries(
+            preservedEntries.filter(([, tooth]) => tooth.ausente || tooth.marks.length > 0)
+          );
+        });
+        setActionHistory((prev) => prev.filter((action) => action.readonly));
+        setShowClearConfirm(false);
+      }}
+      onCancel={() => setShowClearConfirm(false)}
+    />
+    {importError && (
+      <div style={{
+        position: 'fixed', top: 20, right: 20, zIndex: 9999,
+        background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10,
+        padding: '12px 16px', color: '#b91c1c', fontSize: 13, fontWeight: 500,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxWidth: 320,
+      }}>
+        {importError}
+      </div>
+    )}
+    {validationWarning && (
+      <div style={{
+        position: 'fixed', top: 70, right: 20, zIndex: 9999,
+        background: '#fffbeb',
+        border: '1px solid #fcd34d',
+        borderRadius: 12, padding: '14px 18px',
+        color: '#92400e',
+        fontSize: 13, fontWeight: 600,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxWidth: 380,
+        animation: 'fadeIn 0.2s ease-out',
+        display: 'flex', alignItems: 'flex-start', gap: 10,
+      }}>
+        <AlertCircle size={16} />
+        <span>{validationWarning}</span>
+      </div>
+    )}
     <div style={{ 
       fontFamily: 'system-ui, -apple-system, sans-serif', 
       width: '100%',
-      background: 'white',
-      borderRadius: '16px',
+      background: COLORS.cardBg,
+      borderRadius: '20px',
       overflow: 'hidden',
       border: `1px solid ${COLORS.border}`,
-      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+      boxShadow: COLORS.shadowXl,
       color: COLORS.text
     }}>
       <style>{`
-        .tooth-container { 
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-          cursor: pointer;
-        }
-        .tooth-container:hover { 
-          transform: scale(1.15) translateY(-2px); 
-          z-index: 10; 
-          filter: drop-shadow(0 8px 16px rgba(0, 113, 227, 0.2));
-        }
-        .tooth-container:active { 
-          transform: scale(1.08) translateY(0px); 
-          transition: all 0.1s ease;
-        }
-        .face-hover { 
-          filter: brightness(1.1) saturate(1.2); 
-          transition: filter 0.2s ease;
-        }
-        .tooth-selected {
-          animation: toothPulse 1.5s ease-in-out infinite;
-        }
-        @keyframes toothPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(0, 113, 227, 0.4); }
-          50% { box-shadow: 0 0 0 8px rgba(0, 113, 227, 0); }
-        }
-        .custom-select {
-          appearance: none;
-          background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-          background-repeat: no-repeat;
-          background-position: right 1rem center;
-          background-size: 1em;
-          transition: all 0.2s ease;
-        }
-        .custom-select:focus {
-          box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
-          border-color: ${COLORS.primary};
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes slideInUp {
-          from { opacity: 0; transform: translateY(20px); }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.4s ease-out;
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.85; transform: scale(1.02); }
         }
-        .animate-slideInUp {
-          animation: slideInUp 0.3s ease-out;
+        @keyframes glowPulse {
+          0%, 100% { filter: drop-shadow(0 0 2px rgba(75,85,99,0.3)); }
+          50% { filter: drop-shadow(0 0 6px rgba(75,85,99,0.5)); }
+        }
+        @keyframes successPop {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes toolHover {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(6px); }
+        }
+        .ortho-tooth {
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+        }
+        .ortho-tooth:hover {
+          transform: scale(1.1) translateY(-4px);
+          z-index: 30;
+          filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15));
+        }
+        .ortho-tooth-selected {
+          animation: pulse 1.5s ease-in-out infinite, glowPulse 1.5s ease-in-out infinite;
+          animation-fill-mode: both;
+        }
+        .state-btn {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .state-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: ${COLORS.shadowMd};
+        }
+        .tool-btn {
+          transition: all 0.2s ease;
+        }
+        .tool-btn:hover {
+          animation: toolHover 0.3s ease forwards;
+          background: ${COLORS.secondaryLight} !important;
+          box-shadow: ${COLORS.shadowSm};
+        }
+        .dashboard-card {
+          animation: fadeInUp 0.3s ease-out;
+          transition: all 0.2s ease;
+        }
+        .dashboard-card:hover {
+          transform: translateY(-3px);
+          box-shadow: ${COLORS.shadowLg};
+          border-color: ${COLORS.primary}30 !important;
+        }
+        .animate-fadeIn {
+          animation: fadeInUp 0.3s ease-out;
         }
         .glass-panel {
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(12px);
-          border: 1px solid rgba(255,255,255,0.3);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+          background: ${COLORS.cardBg};
+          border: 1px solid ${COLORS.border};
+          box-shadow: ${COLORS.shadowLg};
         }
-        .tool-button {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
+        .odontogram-container {
+          overflow-x: auto;
+          overflow-y: visible;
+          scrollbar-width: thin;
         }
-        .tool-button::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-          transition: left 0.5s;
+        .odontogram-container::-webkit-scrollbar {
+          height: 6px;
         }
-        .tool-button:hover::before {
-          left: 100%;
+        .odontogram-container::-webkit-scrollbar-track {
+          background: ${COLORS.secondaryLight};
+          border-radius: 3px;
         }
-        .tool-button:hover {
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        .odontogram-container::-webkit-scrollbar-thumb {
+          background: ${COLORS.borderDark};
+          border-radius: 3px;
         }
-        .tool-button:active {
-          transform: translateY(-1px) scale(0.98);
-          transition: all 0.1s ease;
-        }
-        .odontogram-grid {
-          animation: fadeIn 0.6s ease-out;
-        }
-        .legend-item {
-          transition: all 0.2s ease;
-          cursor: pointer;
-        }
-        .legend-item:hover {
-          transform: translateX(4px);
+        .odontogram-container::-webkit-scrollbar-thumb:hover {
+          background: ${COLORS.textLight};
         }
       `}</style>
 
-      {/* ===== BARRA DE HERRAMIENTAS SUPERIOR ===== */}
+      {/* Header visual igual a Ortho */}
       <div style={{
-        padding: '20px 30px',
-        background: '#f8fafc',
+        background: `linear-gradient(135deg, ${COLORS.secondaryLight} 0%, ${COLORS.cardBg} 100%)`,
+        padding: '14px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        borderBottom: `1px solid ${COLORS.border}`,
+        boxShadow: COLORS.shadowMd
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ background: COLORS.primaryLight, padding: '10px', borderRadius: '12px', boxShadow: COLORS.shadowSm }}>
+            <LayoutGrid size={20} color={COLORS.primary} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: COLORS.primaryDark }}>Odontograma General</h2>
+            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: COLORS.textLight }}>Gestion visual clinica</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => setShowHelp(!showHelp)} style={{ padding: '8px 14px', background: 'transparent', border: `1px solid ${COLORS.border}`, borderRadius: '10px', cursor: 'pointer', color: COLORS.text }}>
+            <Info size={16} />
+          </button>
+          <button onClick={clearAll} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: COLORS.errorLight, border: `1px solid ${COLORS.error}40`, color: COLORS.error, borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, boxShadow: COLORS.shadowSm }}>
+            <Trash size={14} /> Limpiar
+          </button>
+        </div>
+      </div>
+
+      {/* Barra de estados igual a Ortho */}
+      <div style={{
+        padding: '12px 24px',
+        background: COLORS.secondaryLight,
         borderBottom: `1px solid ${COLORS.border}`,
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '20px'
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '10px'
       }}>
-        
-        {/* Selector de Estado con botones visuales */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {STATES.map(state => (
             <button
               key={state.id}
+              className="state-btn"
               onClick={() => setActiveState(state.id)}
               title={state.longDescription}
               style={{
-                padding: '8px 16px',
-                background: activeState === state.id ? state.color : 'white',
-                color: activeState === state.id ? 'white' : state.color,
+                padding: '8px 18px',
+                background: activeState === state.id ? state.color : COLORS.cardBg,
+                color: activeState === state.id ? '#FFFFFF' : state.color,
                 border: `2px solid ${state.color}`,
-                borderRadius: '8px',
+                borderRadius: '30px',
                 cursor: 'pointer',
                 fontSize: '13px',
-                fontWeight: 600,
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s',
-                boxShadow: activeState === state.id ? `0 2px 8px ${state.color}80` : 'none'
+                gap: '8px',
+                boxShadow: activeState === state.id ? `0 2px 8px ${state.color}40` : COLORS.shadowSm
               }}
             >
               <state.icon size={14} />
               {state.name}
             </button>
           ))}
-        </div>
-
-        {/* Botones de Acción */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={clearAll} 
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '4px', 
-              padding: '8px 12px', background: '#fee2e2', border: `1px solid ${COLORS.error}40`, 
-              color: COLORS.error, borderRadius: '6px', cursor: 'pointer',
+          <button
+            className="state-btn"
+            onClick={() => setProcessMode((prev) => !prev)}
+            title="Marca el hallazgo como procedimiento en seguimiento"
+            style={{
+              padding: '8px 18px',
+              background: processMode ? COLORS.proceso : COLORS.cardBg,
+              color: processMode ? '#FFFFFF' : COLORS.proceso,
+              border: `2px solid ${COLORS.proceso}`,
+              borderRadius: '30px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: processMode ? `0 2px 8px ${COLORS.proceso}40` : COLORS.shadowSm
             }}
           >
-            <Trash size={14} /> Limpiar todo
+            <Clock size={14} />
+            Proceso
           </button>
-          <button 
-            onClick={() => setShowHelp(!showHelp)}
-            style={{ padding: '8px', background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '6px', cursor: 'pointer' }}
+          <button
+            className="state-btn"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            title="Deshacer último cambio"
+            style={{
+              padding: '8px 12px',
+              background: COLORS.cardBg,
+              color: undoStack.length === 0 ? COLORS.textMuted : COLORS.text,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: '10px',
+              cursor: undoStack.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: undoStack.length === 0 ? 0.5 : 1,
+            }}
           >
-            <Info size={14} />
+            <Undo size={14} />
           </button>
+          <button
+            className="state-btn"
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
+            title="Rehacer último cambio"
+            style={{
+              padding: '8px 12px',
+              background: COLORS.cardBg,
+              color: redoStack.length === 0 ? COLORS.textMuted : COLORS.text,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: '10px',
+              cursor: redoStack.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: redoStack.length === 0 ? 0.5 : 1,
+            }}
+          >
+            <Redo size={14} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: COLORS.cardBg, padding: '6px 12px', borderRadius: '30px', border: `1px solid ${COLORS.border}`, boxShadow: COLORS.shadowSm }}>
+          <TrendingUp size={14} color={COLORS.success} />
+          <span style={{ fontSize: '12px', fontWeight: 600, color: COLORS.textLight }}>Denticion:</span>
+          <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.cardBg }}>
+            {(['adult','primary','mixed'] as DentitionMode[]).map(mode => {
+              const info = DENTITION_SETS[mode];
+              const isActive = dentitionMode === mode;
+              const isAuto = autoDentitionMode === mode && dentitionOverride === null;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setDentitionOverride(dentitionOverride === mode ? null : mode)}
+                  title={info.description + (isAuto ? ' (detectado automáticamente)' : '')}
+                  style={{
+                    padding: '6px 10px',
+                    background: isActive ? info.color : 'transparent',
+                    color: isActive ? '#fff' : COLORS.text,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    fontWeight: isActive ? 700 : 500,
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    borderRight: mode !== 'mixed' ? `1px solid ${COLORS.border}` : 'none',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <span>{info.label}</span>
+                  {isAuto && <span style={{ fontSize: 9, opacity: 0.8, background: 'rgba(255,255,255,0.3)', borderRadius: 4, padding: '1px 4px' }}>AUTO</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -730,10 +1215,10 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
         }}>
           <h4 style={{ marginBottom: '10px' }}>Atajos de teclado:</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '12px' }}>
-            <div>• <strong>Ctrl+1:</strong> Pendiente</div>
-            <div>• <strong>Ctrl+2:</strong> Realizado</div>
-            <div>• <strong>Ctrl+3:</strong> Externo</div>
-            <div>• <strong>Ctrl+4:</strong> Presupuesto</div>
+            <div>• <strong>Ctrl+1:</strong> Revision actual</div>
+            <div>• <strong>Ctrl+2:</strong> Pendiente</div>
+            <div>• <strong>Ctrl+3:</strong> Proceso ON/OFF</div>
+            <div>• <strong>Ctrl+Z / Ctrl+Y:</strong> Deshacer / Rehacer</div>
             <div>• Click en cara: Aplicar herramienta</div>
             <div>• Click en diente: Seleccionar</div>
           </div>
@@ -753,13 +1238,13 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
       )}
 
       {/* ===== CONTENIDO PRINCIPAL (2 COLUMNAS) ===== */}
-      <div style={{ display: 'flex', gap: '24px', padding: '24px' }}>
+      <div style={{ display: 'flex', gap: '20px', padding: '20px' }}>
         
         {/* ===== COLUMNA IZQUIERDA: HERRAMIENTAS ===== */}
-        <div style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ width: '250px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           {/* Buscador de herramientas */}
-          <div style={{ background: 'white', borderRadius: '12px', border: `1px solid ${COLORS.border}`, padding: '16px' }}>
+          <div className="dashboard-card" style={{ background: COLORS.cardBg, borderRadius: '14px', border: `1px solid ${COLORS.border}`, padding: '12px', boxShadow: COLORS.shadowLg }}>
             <input
               type="text"
               placeholder="Buscar herramienta..."
@@ -778,7 +1263,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
           </div>
 
           {/* Filtro por categorías */}
-          <div style={{ background: 'white', borderRadius: '12px', border: `1px solid ${COLORS.border}`, padding: '16px' }}>
+          <div className="dashboard-card" style={{ background: COLORS.cardBg, borderRadius: '14px', border: `1px solid ${COLORS.border}`, padding: '12px', boxShadow: COLORS.shadowLg }}>
             <label style={{ fontSize: '12px', fontWeight: 700, color: COLORS.textLight, display: 'block', marginBottom: '8px' }}>
               FILTRAR POR CATEGORÍA
             </label>
@@ -803,12 +1288,12 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
           </div>
 
           {/* Herramienta Activa (PREVIEW) */}
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '12px', 
+          <div className="dashboard-card" style={{ 
+            background: COLORS.cardBg,
+            borderRadius: '14px', 
             border: `2px solid ${currentToolObj.color}`,
-            padding: '20px',
-            boxShadow: `0 4px 12px ${currentToolObj.color}40`
+            padding: '14px',
+            boxShadow: COLORS.shadowLg
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
               <div style={{ 
@@ -826,11 +1311,26 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
                 <div style={{ fontSize: '18px', fontWeight: 800, color: currentToolObj.color }}>{currentToolObj.name}</div>
                 <div style={{ fontSize: '11px', color: COLORS.textLight }}>Herramienta activa</div>
                 <div style={{ fontSize: '10px', color: COLORS.textLight, marginTop: '2px' }}>
-                  Estado: {STATES.find(s => s.id === activeState)?.name}
+                  Estado: {STATES.find(s => s.id === activeState)?.name}{processMode ? ' · Proceso' : ''}
                 </div>
               </div>
             </div>
             <div style={{ fontSize: '13px', color: COLORS.text }}>{currentToolObj.description}</div>
+            {/* CIE-10 / CDT Badges */}
+            {((currentToolObj as any).cie10 || (currentToolObj as any).cdt) && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {(currentToolObj as any).cie10 && (currentToolObj as any).cie10 !== '—' && (
+                  <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.02em' }}>
+                    CIE-10: {(currentToolObj as any).cie10}
+                  </span>
+                )}
+                {(currentToolObj as any).cdt && (currentToolObj as any).cdt !== '—' && (
+                  <span style={{ background: '#f0fdf4', color: '#15803d', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.02em' }}>
+                    CDT: {(currentToolObj as any).cdt}
+                  </span>
+                )}
+              </div>
+            )}
             <div style={{ 
               marginTop: '12px', 
               padding: '8px 12px', 
@@ -847,13 +1347,36 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
             </div>
           </div>
 
+          {/* Panel de Historial Previo — visible cuando hay un diente seleccionado con historia */}
+          {selectedTooth && prevMarksByTooth[selectedTooth]?.length > 0 && (
+            <div className="dashboard-card" style={{ background: COLORS.cardBg, borderRadius: 14, border: `1px solid ${COLORS.border}`, overflow: 'hidden', boxShadow: COLORS.shadowLg }}>
+              <div style={{ background: '#64748b', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Clock size={16} color="white" />
+                <span style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>Historial — Diente {selectedTooth}</span>
+              </div>
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {prevMarksByTooth[selectedTooth].map((m, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 8px', background: '#f8fafc', borderRadius: 8, fontSize: 12 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8', marginTop: 4, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#334155' }}>{m.toolLabel}</div>
+                      <div style={{ color: '#64748b' }}>Cara: {m.face}{m.cie10 ? ` · ${m.cie10}` : ''}</div>
+                      {m.sessionDate && <div style={{ color: '#94a3b8', fontSize: 10, marginTop: 2 }}>{m.sessionDate}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Lista de herramientas filtradas */}
           <div style={{ 
-            background: 'white', 
-            borderRadius: '12px', 
+            background: COLORS.cardBg,
+            borderRadius: '14px', 
             border: `1px solid ${COLORS.border}`,
             maxHeight: '400px',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: COLORS.shadowLg
           }}>
             <div style={{ padding: '16px', borderBottom: `1px solid ${COLORS.border}` }}>
               <h3 style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: 800, color: COLORS.textLight, margin: 0 }}>
@@ -864,6 +1387,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
               {filteredTools.map(tool => (
                 <button
                   key={tool.id}
+                  className="tool-btn"
                   onClick={() => setActiveTool(tool.id)}
                   style={{
                     width: '100%',
@@ -911,71 +1435,113 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
         </div>
 
         {/* ===== COLUMNA DERECHA: ODONTOGRAMA Y DASHBOARD ===== */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* LIENZO DEL ODONTOGRAMA (SIN ZOOM) */}
-          <div style={{ 
-            background: 'white',
-            borderRadius: '16px',
-            border: `1px solid ${COLORS.border}`,
-            padding: '40px 20px',
+          {/* ── BANNER AUTO-DENTICIÓN ── */}
+          {autoDentitionMode !== 'adult' && (
+            <div style={{
+              background: autoDentitionMode === 'primary' ? '#fef9c3' : '#f0fdf4',
+              border: `1px solid ${autoDentitionMode === 'primary' ? '#fde68a' : '#bbf7d0'}`,
+              borderRadius: 10, padding: '10px 16px',
+              display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
+              color: autoDentitionMode === 'primary' ? '#92400e' : '#14532d'
+            }}>
+              <Info size={18} />
+              <span>
+                <strong>Dentición {autoDentitionMode === 'primary' ? 'Temporal' : 'Mixta'} detectada</strong>
+                {patientAge !== null && <> — paciente de <strong>{patientAge} años</strong></>}.
+                {' '}{dentitionOverride === null ? 'El modo se ajustó automáticamente.' : `Modo manual activo (${DENTITION_SETS[dentitionMode].label}).`}
+              </span>
+              {dentitionOverride !== null && (
+                <button
+                  onClick={() => setDentitionOverride(null)}
+                  style={{ marginLeft: 'auto', fontSize: 11, padding: '3px 8px', border: '1px solid currentColor', borderRadius: 6, background: 'transparent', cursor: 'pointer', fontWeight: 600 }}
+                >Restaurar auto</button>
+              )}
+            </div>
+          )}
+
+          {/* LIENZO DEL ODONTOGRAMA */}
+          <div className="odontogram-container" style={{ 
+            background: COLORS.cardBg,
+            borderRadius: '18px',
+            border: `1.5px solid ${COLORS.border}`,
+            padding: '24px 20px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '50px',
-            alignItems: 'center'
+            gap: '24px',
+            alignItems: 'center',
+            overflowX: 'auto',
+            boxShadow: COLORS.shadowXl
           }}>
-            {/* Arcada Superior */}
-            <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
-              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', padding: '10px' }}>
-                {upperTeeth.map((num, index) => {
-                  const data = getToothData(num);
-                  return (
-                    <React.Fragment key={num}>
-                      {index === 8 && <div style={{ width: '2px', background: '#e2e8f0', margin: '0 10px', borderRadius: '2px' }} />}
-                      <ToothGraphic 
-                        number={num} faces={data.faces} ausente={data.ausente}
-                        onFaceClick={(face) => handleFaceClick(num, face)}
-                        hasMark={data.marks?.length > 0}
-                        isSelected={selectedTooth === num}
-                        onSelect={() => setSelectedTooth(prev => prev === num ? null : num)}
-                      />
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Helper: render one row of teeth */}
+            {((): React.ReactElement[] => {
+              const { upper, lower, upperPrimary, lowerPrimary, midline, midlinePrimary } = dentitionInfo;
+              const isMixed = dentitionMode === 'mixed';
+              const isPrimaryMode = dentitionMode === 'primary';
 
-            {/* Línea Divisoria */}
-            <div style={{ width: '70%', height: '1px', margin: '0 auto', background: `linear-gradient(90deg, transparent, #e2e8f0, transparent)` }} />
+              const renderRow = (teeth: string[], midlineAt: number, label: string, prim: boolean) => (
+                <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 1000, margin: '0 auto', overflow: 'visible' }}>
+                  {(isMixed || isPrimaryMode) && (
+                    <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: prim ? '#f59e0b' : COLORS.primary, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {label}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', alignItems: 'center', flexWrap: 'nowrap', width: 'auto', overflow: 'visible' }}>
+                    {teeth.map((num, index) => {
+                      const data = getToothData(num);
+                      const anterior = isAnteriorTooth(num);
+                      return (
+                        <React.Fragment key={num}>
+                          {index === midlineAt && (
+                            <div style={{ width: 2, background: '#cbd5e1', margin: '0 8px', borderRadius: 2, alignSelf: 'stretch' }} />
+                          )}
+                          <ToothGraphic
+                            number={num} faces={data.faces} ausente={data.ausente}
+                            onFaceClick={(face: string) => handleFaceClick(num, face)}
+                            hasMark={data.marks?.length > 0}
+                            isSelected={selectedTooth === num}
+                            onSelect={() => setSelectedTooth(prev => prev === num ? null : num)}
+                            isAnterior={anterior}
+                            isPrimary={prim}
+                            previousMarks={prevMarksByTooth[num]}
+                            isReadonly={Boolean(getToothData(num).readonlyAusente || getToothData(num).marks.some((mark) => mark.readonly))}
+                          />
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
 
-            {/* Arcada Inferior */}
-            <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
-              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', padding: '10px' }}>
-                {lowerTeeth.map((num, index) => {
-                  const data = getToothData(num);
-                  return (
-                    <React.Fragment key={num}>
-                      {index === 8 && <div style={{ width: '2px', background: '#e2e8f0', margin: '0 10px', borderRadius: '2px' }} />}
-                      <ToothGraphic 
-                        number={num} faces={data.faces} ausente={data.ausente}
-                        onFaceClick={(face) => handleFaceClick(num, face)}
-                        hasMark={data.marks?.length > 0}
-                        isSelected={selectedTooth === num}
-                        onSelect={() => setSelectedTooth(prev => prev === num ? null : num)}
-                      />
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            </div>
+              const rows: React.ReactElement[] = [];
+
+              rows.push(renderRow(upper, midline, 'Permanentes superiores (11-28)', false));
+              if (isMixed && upperPrimary) {
+                rows.push(<div key="divU" style={{ width: '80%', height: 1, background: 'linear-gradient(90deg,transparent,#fde68a,transparent)', margin: '0 auto' }} />);
+                rows.push(renderRow(upperPrimary, midlinePrimary ?? 5, 'Temporales superiores (55-65)', true));
+              }
+
+              // Central midline separator between upper and lower halves
+              rows.push(<div key="midline" style={{ width: '80%', height: 2, background: 'linear-gradient(90deg,transparent,#e2e8f0,transparent)', margin: '0 auto' }} />);
+
+              if (isMixed && lowerPrimary) {
+                rows.push(renderRow(lowerPrimary, midlinePrimary ?? 5, 'Temporales inferiores (85-75)', true));
+                rows.push(<div key="divL" style={{ width: '80%', height: 1, background: 'linear-gradient(90deg,transparent,#fde68a,transparent)', margin: '0 auto' }} />);
+              }
+              rows.push(renderRow(lower, midline, 'Permanentes inferiores (48-38)', false));
+
+              return rows;
+            })()}
           </div>
 
           {/* DASHBOARD CLÍNICO */}
           <div style={{ 
-            background: 'white',
-            borderRadius: '16px',
+            background: COLORS.cardBg,
+            borderRadius: '14px',
             border: `1px solid ${COLORS.border}`,
-            padding: '24px'
+            padding: '16px',
+            boxShadow: COLORS.shadowLg
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
               <PieChart size={20} color={COLORS.primary} />
@@ -992,7 +1558,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
               <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: `1px solid ${COLORS.border}` }}>
                 <div style={{ fontSize: '12px', color: COLORS.textLight, fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>Total</div>
-                <div style={{ fontSize: '28px', fontWeight: 900 }}>32</div>
+                <div style={{ fontSize: '28px', fontWeight: 900 }}>{allVisibleTeeth.length}</div>
               </div>
               
               <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
@@ -1064,7 +1630,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
                           background: 'white',
                           borderRadius: '8px',
                           border: `1px solid ${tool.color}40`,
-                          boxShadow: `0 2px 4px ${tool.color}20`
+                          boxShadow: '0 2px 6px rgba(51,65,85,0.12)'
                         }}>
                           <div style={{ 
                             width: '28px', 
@@ -1080,7 +1646,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: '13px', fontWeight: 700, color: tool.color }}>{tool.name}</div>
                             <div style={{ fontSize: '11px', color: COLORS.textLight }}>
-                              Diente {accion.tooth} - Cara {accion.face} • {estado?.name || ''}
+                              Diente {accion.tooth} - Cara {accion.face} • {estado?.name || ''}{accion.proceso ? ' · Proceso' : ''}
                             </div>
                           </div>
                           <div style={{ fontSize: '10px', color: COLORS.textLight }}>
@@ -1100,7 +1666,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
                           background: 'white',
                           borderRadius: '8px',
                           border: `1px solid ${COLORS.error}40`,
-                          boxShadow: `0 2px 4px ${COLORS.error}20`
+                          boxShadow: '0 2px 6px rgba(51,65,85,0.12)'
                         }}>
                           <div style={{ 
                             width: '28px', 
@@ -1117,6 +1683,41 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
                             <div style={{ fontSize: '13px', fontWeight: 700, color: COLORS.error }}>Diente ausente</div>
                             <div style={{ fontSize: '11px', color: COLORS.textLight }}>
                               Diente {accion.tooth}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '10px', color: COLORS.textLight }}>
+                            {new Date(accion.timestamp).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      );
+                    }
+                    else if (accion.type === 'automation-limpieza') {
+                      return (
+                        <div key={index} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px',
+                          background: 'white',
+                          borderRadius: '8px',
+                          border: `1px solid ${COLORS.primary}40`,
+                          boxShadow: '0 2px 6px rgba(51,65,85,0.12)'
+                        }}>
+                          <div style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '8px',
+                            background: COLORS.primary,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Sparkles size={16} color="white" />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: COLORS.primary }}>Limpieza general automatizada</div>
+                            <div style={{ fontSize: '11px', color: COLORS.textLight }}>
+                              Aplicada sobre piezas disponibles
                             </div>
                           </div>
                           <div style={{ fontSize: '10px', color: COLORS.textLight }}>
@@ -1156,7 +1757,7 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
       {/* ===== BARRA INFERIOR ===== */}
       <div style={{ 
         padding: '15px 30px', 
-        background: '#f8fafc', 
+        background: COLORS.secondaryLight,
         borderTop: `1px solid ${COLORS.border}`,
         display: 'flex',
         justifyContent: 'space-between',
@@ -1171,16 +1772,17 @@ export const GeneralOdontogram = ({ onHistoryChange, onChange, onUpdate, value }
         <div style={{ display: 'flex', gap: '10px' }}>
           <button 
             onClick={exportData}
-            style={{ padding: '8px 16px', background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+            style={{ padding: '8px 16px', background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', boxShadow: COLORS.shadowSm }}
           >
             <Download size={14} /> Exportar
           </button>
-          <label style={{ padding: '8px 16px', background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+          <label style={{ padding: '8px 16px', background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', boxShadow: COLORS.shadowSm }}>
             <Upload size={14} /> Importar
             <input type="file" accept=".json" onChange={importData} style={{ display: 'none' }} />
           </label>
         </div>
       </div>
     </div>
+    </>
   );
 };

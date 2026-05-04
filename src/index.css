@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,34 +6,103 @@
 
 @layer base {
   :root {
-    --estdent-blue: #00ADEF;
-    --soft-gray: #F8FAFC;
-    --border-color: #E2E8F0;
+    --estdent-blue: #3b82f6;
+    --estdent-purple: #8b5cf6;
+    --soft-gray: #f8f9fb;
+    --border-color: #eef0f2;
+    --scrollbar-thumb: #d1d5db;
+    --scrollbar-thumb-hover: #b8c0cc;
   }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 99px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   body {
-    @apply bg-[var(--soft-gray)] text-slate-900 antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    background: #f0f2f5;
+    color: #1e293b;
+    -webkit-font-smoothing: antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 }
 
 @layer components {
-  /* Tarjetas Minimalistas Apple-style */
   .card-pro {
-    @apply bg-white border border-[var(--border-color)] rounded-2xl shadow-sm p-6 transition-all;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 24px;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1500px;
+    width: calc(100% - 16px);
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,.02);
   }
-  
-  /* Botón Azul Vibe */
-  .btn-blue {
-    @apply bg-[var(--estdent-blue)] text-white font-medium py-2 px-5 rounded-xl 
-           hover:brightness-110 active:scale-95 transition-all flex items-center gap-2;
+  .card-pro:hover {
+    box-shadow: 0 8px 32px rgba(0,0,0,.06);
   }
 
-  /* Inputs Limpios */
+  .btn-blue {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 26px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  }
+  .btn-blue:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 28px rgba(59, 130, 246, 0.35);
+  }
+
   .input-pro {
-    @apply bg-white border border-[var(--border-color)] rounded-xl px-4 py-3 outline-none transition-all duration-200;
+    background: white;
+    border: 1.5px solid var(--border-color);
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 0.2s ease;
+    color: #1e293b;
+    width: 100%;
   }
   .input-pro:focus {
     border-color: var(--estdent-blue);
-    box-shadow: 0 0 0 4px rgba(0, 173, 239, 0.18);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 }

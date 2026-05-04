@@ -1,4 +1,9 @@
 import { supabase } from '../../../shared/lib/supabase';
+import {
+  normalizePatientRh,
+  omitPatientRhColumn,
+  shouldRetryWithoutPatientRhColumn,
+} from '../../../shared/lib/patientRhUtils';
 
 const computeAgeFromBirth = (birthDate?: string | null): number | null => {
   if (!birthDate) return null;
@@ -35,7 +40,7 @@ export const patientService = {
 
   // 2. Crear un paciente nuevo
   createPatient: async (patientData: any) => {
-    const allowedFields = ['cc','tipo_documento','nombre','apellidos','fecha_nacimiento','municipio_ciudad','estado','telefono','email','edad'];
+    const allowedFields = ['cc','tipo_documento','nombre','apellidos','fecha_nacimiento','municipio_ciudad','direccion','estado','telefono','email','edad','tipo_sangre_rh'];
     const safePayload: any = {};
 
     Object.keys(patientData).forEach((key) => {
@@ -49,6 +54,8 @@ export const patientService = {
       if (computed !== null) safePayload.edad = computed;
     }
 
+    safePayload.tipo_sangre_rh = normalizePatientRh(safePayload.tipo_sangre_rh);
+
     // Garanticemos que estén todos los campos necesarios
     const missing = allowedFields.filter(f => !Object.prototype.hasOwnProperty.call(safePayload, f));
     if (missing.length > 0) {
@@ -56,10 +63,17 @@ export const patientService = {
     }
 
     console.log('[patientService] insert payload:', safePayload);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('pacientes')
       .insert([safePayload])
       .select();
+
+    if (error && shouldRetryWithoutPatientRhColumn(error)) {
+      ({ data, error } = await supabase
+        .from('pacientes')
+        .insert([omitPatientRhColumn(safePayload)])
+        .select());
+    }
 
     if (error) {
       console.error('Error al crear paciente:', error);
@@ -70,7 +84,7 @@ export const patientService = {
 
   // 3. Actualizar un paciente
   updatePatient: async (id: string, patientData: any) => {
-    const allowedFields = ['cc', 'tipo_documento', 'nombre', 'apellidos', 'fecha_nacimiento', 'municipio_ciudad', 'estado', 'telefono', 'email'];
+    const allowedFields = ['cc', 'tipo_documento', 'nombre', 'apellidos', 'fecha_nacimiento', 'municipio_ciudad', 'direccion', 'estado', 'telefono', 'email', 'edad', 'tipo_sangre_rh'];
     const safePayload: any = {};
 
     Object.keys(patientData).forEach((key) => {
@@ -84,12 +98,24 @@ export const patientService = {
       if (computed !== null) safePayload.edad = computed;
     }
 
+    if (Object.prototype.hasOwnProperty.call(safePayload, 'tipo_sangre_rh')) {
+      safePayload.tipo_sangre_rh = normalizePatientRh(safePayload.tipo_sangre_rh);
+    }
+
     console.log('[patientService] update payload:', safePayload);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('pacientes')
       .update(safePayload)
       .eq('id', id)
       .select();
+
+    if (error && shouldRetryWithoutPatientRhColumn(error)) {
+      ({ data, error } = await supabase
+        .from('pacientes')
+        .update(omitPatientRhColumn(safePayload))
+        .eq('id', id)
+        .select());
+    }
 
     if (error) {
       console.error('Error al actualizar paciente:', error);
